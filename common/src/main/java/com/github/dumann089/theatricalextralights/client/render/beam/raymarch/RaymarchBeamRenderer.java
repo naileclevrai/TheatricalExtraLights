@@ -73,8 +73,15 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         }
 
         float maxDist = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
-        boolean hitBlock = data.scanLen() < maxDist;
-        float scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        boolean hitBlock;
+        float scanLen;
+        if (data.exactScanLen()) {
+            scanLen = Math.max(0.01f, data.scanLen());
+            hitBlock = scanLen + 0.05f < maxDist;
+        } else {
+            hitBlock = data.scanLen() < maxDist;
+            scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        }
         if (scanLen <= 0.0f) {
             return;
         }
@@ -102,6 +109,9 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         s.goboTexture = data.goboTexture() != null ? data.goboTexture() : OPEN_GOBO;
         s.goboRotation = data.goboRotation();
         s.hitBlock = hitBlock;
+        s.exactScanLen = data.exactScanLen();
+        s.laserProfile = data.laserProfile();
+        s.laserSheet = data.laserSheet();
         s.fixturePos = data.fixturePos();
         s.localOriginX = (float) data.origin().x;
         s.localOriginY = (float) data.origin().y;
@@ -182,8 +192,13 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 transformDir(viewMat, s.uX, s.uY, s.uZ, uVS);
                 transformDir(viewMat, s.vX, s.vY, s.vZ, vVS);
 
-                float endRadius = Math.max(s.baseRadius, s.scanLen * Math.max(s.tanHalfAngle, 1.0e-4f));
-                endRadius *= Math.max(s.widthScale, s.heightScale);
+                float endRadius;
+                if (s.laserProfile && !s.laserSheet) {
+                    endRadius = Math.max(s.baseRadius, 0.05f);
+                } else {
+                    endRadius = Math.max(s.baseRadius, s.scanLen * Math.max(s.tanHalfAngle, 1.0e-4f));
+                    endRadius *= Math.max(s.widthScale, s.heightScale);
+                }
 
                 shader.safeGetUniform("InvProjMat").set(invProj);
                 shader.safeGetUniform("BeamOrigin").set(originVS.x, originVS.y, originVS.z);
@@ -205,12 +220,19 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("Brightness").set(brightness);
                 shader.safeGetUniform("Anisotropy").set(anisotropy);
                 shader.safeGetUniform("FadeLength").set(s.hitBlock ? 0.0f : fadeLen);
-                shader.safeGetUniform("DustAmount").set(dust);
+                float beamDust = (s.laserProfile || s.laserSheet) ? dust * 0.45f : dust;
+                int beamStepsUse = beamSteps;
+                if (s.laserProfile || s.laserSheet) {
+                    beamStepsUse = Math.max(beamSteps, 20);
+                }
+                shader.safeGetUniform("DustAmount").set(beamDust);
                 shader.safeGetUniform("GoboRotation").set(s.goboRotation);
                 shader.safeGetUniform("Time").set(time);
                 shader.safeGetUniform("Ambient").set(daylight);
                 shader.safeGetUniform("ScreenSize").set(screenW, screenH);
-                shader.safeGetUniform("StepCount").set(beamSteps);
+                shader.safeGetUniform("StepCount").set(beamStepsUse);
+                shader.safeGetUniform("LaserProfile").set(s.laserProfile ? 1 : 0);
+                shader.safeGetUniform("LaserSheet").set(s.laserSheet ? 1 : 0);
 
                 int depthTex = SceneDepthCopy.getDepthTextureId();
                 RenderType renderType = ModShaders.getRaymarchRenderType(s.goboTexture);
@@ -280,7 +302,9 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
 
     private static void drawConeProxy(BufferBuilder vc, Matrix4f mat, BeamSlot s, float endRadius) {
         float startR = Math.max(s.baseRadius, 0.05f) * Math.max(s.widthScale, s.heightScale);
-        float pad = Math.max(startR, endRadius) * 1.15f + 0.25f;
+        float padMul = (s.laserProfile || s.laserSheet) ? 1.45f : 1.15f;
+        float padAdd = s.laserSheet ? 0.40f : 0.25f;
+        float pad = Math.max(startR, endRadius) * padMul + padAdd;
 
         float ox = s.originX;
         float oy = s.originY;
@@ -335,6 +359,9 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         public ResourceLocation goboTexture;
         public float goboRotation;
         public boolean hitBlock;
+        public boolean exactScanLen;
+        public boolean laserProfile;
+        public boolean laserSheet;
         public net.minecraft.core.BlockPos fixturePos;
         public float localOriginX, localOriginY, localOriginZ;
     }

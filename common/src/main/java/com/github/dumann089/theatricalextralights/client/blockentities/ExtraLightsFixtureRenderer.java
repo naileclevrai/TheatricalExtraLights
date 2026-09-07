@@ -104,6 +104,78 @@ public abstract class ExtraLightsFixtureRenderer<T extends BaseLightBlockEntity>
             float customIntensity,
             float baseRadius
     ) {
+        submitVolumetricBeam(blockEntity, beamPose, partialTicks, minAngleDeg, maxAngleDeg,
+                goboLibrary, goboSlot, focusNorm, widthScale, heightScale, beamIndex,
+                customColor, customIntensity, baseRadius, (float) blockEntity.getDistance(), false);
+    }
+
+    protected void submitVolumetricBeam(
+            T blockEntity,
+            PoseStack beamPose,
+            float partialTicks,
+            float minAngleDeg,
+            float maxAngleDeg,
+            GoboLibrary goboLibrary,
+            int goboSlot,
+            float focusNorm,
+            float widthScale,
+            float heightScale,
+            int beamIndex,
+            int customColor,
+            float customIntensity,
+            float baseRadius,
+            float customScanLen,
+            boolean exactScanLen
+    ) {
+        submitVolumetricBeam(blockEntity, beamPose, partialTicks, minAngleDeg, maxAngleDeg,
+                goboLibrary, goboSlot, focusNorm, widthScale, heightScale, beamIndex,
+                customColor, customIntensity, baseRadius, customScanLen, exactScanLen, false, false);
+    }
+
+    protected void submitVolumetricBeam(
+            T blockEntity,
+            PoseStack beamPose,
+            float partialTicks,
+            float minAngleDeg,
+            float maxAngleDeg,
+            GoboLibrary goboLibrary,
+            int goboSlot,
+            float focusNorm,
+            float widthScale,
+            float heightScale,
+            int beamIndex,
+            int customColor,
+            float customIntensity,
+            float baseRadius,
+            float customScanLen,
+            boolean exactScanLen,
+            boolean laserProfile
+    ) {
+        submitVolumetricBeam(blockEntity, beamPose, partialTicks, minAngleDeg, maxAngleDeg,
+                goboLibrary, goboSlot, focusNorm, widthScale, heightScale, beamIndex,
+                customColor, customIntensity, baseRadius, customScanLen, exactScanLen, laserProfile, false);
+    }
+
+    protected void submitVolumetricBeam(
+            T blockEntity,
+            PoseStack beamPose,
+            float partialTicks,
+            float minAngleDeg,
+            float maxAngleDeg,
+            GoboLibrary goboLibrary,
+            int goboSlot,
+            float focusNorm,
+            float widthScale,
+            float heightScale,
+            int beamIndex,
+            int customColor,
+            float customIntensity,
+            float baseRadius,
+            float customScanLen,
+            boolean exactScanLen,
+            boolean laserProfile,
+            boolean laserSheet
+    ) {
         if (!TheatricalExtraLightsConfig.isVolumetricBeamEnabled() || customIntensity <= 0.0f) return;
 
         org.joml.Matrix4f headMatrix = beamPose.last().pose();
@@ -112,13 +184,19 @@ public abstract class ExtraLightsFixtureRenderer<T extends BaseLightBlockEntity>
         Vec3 axisV = new Vec3(headMatrix.m10(), headMatrix.m11(), headMatrix.m12()).normalize();
         Vec3 beamDir = new Vec3(-headMatrix.m20(), -headMatrix.m21(), -headMatrix.m22()).normalize();
 
-        float tanHalfAngle = (float) Math.tan(Math.toRadians(minAngleDeg + focusNorm * (maxAngleDeg - minAngleDeg)));
+        float tanHalfAngle;
+        if (laserProfile && !laserSheet) {
+            tanHalfAngle = 0.0f;
+        } else {
+            tanHalfAngle = (float) Math.tan(Math.toRadians(minAngleDeg + focusNorm * (maxAngleDeg - minAngleDeg)));
+        }
         ResourceLocation goboTexture = (goboLibrary != null) ? goboLibrary.getTexture(goboSlot) : new ResourceLocation("theatricalextralights", "textures/gobos/generic_1/open.png");
 
         BeamRenderData renderData = new BeamRenderData(
                 blockEntity.getBlockPos(), origin, beamDir, axisU, axisV, focusNorm,
-                (float) blockEntity.getDistance(), tanHalfAngle, customColor,
-                customIntensity, goboTexture, 0.0f, blockEntity.getLevel(), widthScale, heightScale, baseRadius
+                customScanLen, tanHalfAngle, customColor,
+                customIntensity, goboTexture, 0.0f, blockEntity.getLevel(), widthScale, heightScale, baseRadius,
+                exactScanLen, laserProfile, laserSheet
         );
 
         volumetricRenderers.computeIfAbsent(blockEntity, k -> new java.util.HashMap<>())

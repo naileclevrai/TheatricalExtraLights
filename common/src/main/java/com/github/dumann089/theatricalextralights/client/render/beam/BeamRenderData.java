@@ -21,8 +21,86 @@ public record BeamRenderData(
         Level level,
         float widthScale,
         float heightScale,
-        float baseRadius // Añadida la coma arriba y esto aquí
+        float baseRadius,
+        boolean exactScanLen,
+        boolean laserProfile,
+        boolean laserSheet
 ) {
+    public BeamRenderData(
+            BlockPos fixturePos,
+            Vec3 origin,
+            Vec3 beamDir,
+            Vec3 axisU,
+            Vec3 axisV,
+            float zoomNorm,
+            float scanLen,
+            float tanHalfAngle,
+            int color,
+            float intensity,
+            ResourceLocation goboTexture,
+            float goboRotation,
+            Level level,
+            float widthScale,
+            float heightScale,
+            float baseRadius,
+            boolean exactScanLen,
+            boolean laserProfile
+    ) {
+        this(fixturePos, origin, beamDir, axisU, axisV,
+                zoomNorm, scanLen, tanHalfAngle,
+                color, intensity, goboTexture, goboRotation, level,
+                widthScale, heightScale, baseRadius, exactScanLen, laserProfile, false);
+    }
+
+    public BeamRenderData(
+            BlockPos fixturePos,
+            Vec3 origin,
+            Vec3 beamDir,
+            Vec3 axisU,
+            Vec3 axisV,
+            float zoomNorm,
+            float scanLen,
+            float tanHalfAngle,
+            int color,
+            float intensity,
+            ResourceLocation goboTexture,
+            float goboRotation,
+            Level level,
+            float widthScale,
+            float heightScale,
+            float baseRadius,
+            boolean exactScanLen
+    ) {
+        this(fixturePos, origin, beamDir, axisU, axisV,
+                zoomNorm, scanLen, tanHalfAngle,
+                color, intensity, goboTexture, goboRotation, level,
+                widthScale, heightScale, baseRadius, exactScanLen, false, false);
+    }
+
+    public BeamRenderData(
+            BlockPos fixturePos,
+            Vec3 origin,
+            Vec3 beamDir,
+            Vec3 axisU,
+            Vec3 axisV,
+            float zoomNorm,
+            float scanLen,
+            float tanHalfAngle,
+            int color,
+            float intensity,
+            ResourceLocation goboTexture,
+            float goboRotation,
+            Level level,
+            float widthScale,
+            float heightScale,
+            float baseRadius
+    ) {
+        this(fixturePos, origin, beamDir, axisU, axisV,
+                zoomNorm, scanLen, tanHalfAngle,
+                color, intensity, goboTexture, goboRotation, level,
+                widthScale, heightScale, baseRadius, false);
+    }
+
     /** Constructor de compatibilidad actualizado */
     public BeamRenderData(
             BlockPos fixturePos,
@@ -66,7 +144,9 @@ public record BeamRenderData(
         hash = 31 * hash + slices;
         hash = 31 * hash + Float.floatToIntBits(widthScale);
         hash = 31 * hash + Float.floatToIntBits(heightScale);
-        hash = 31 * hash + Float.floatToIntBits(baseRadius); // Añadido al hash
+        hash = 31 * hash + Float.floatToIntBits(baseRadius);
+        hash = 31 * hash + (laserProfile ? 1231 : 1237);
+        hash = 31 * hash + (laserSheet ? 4327 : 4321);
         return hash;
     }
 }

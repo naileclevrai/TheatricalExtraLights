@@ -7,6 +7,7 @@ import dev.imabad.theatrical.api.dmx.DMXSlot;
 public final class ExtraLightsSlots {
 
     public static final DMXSlot STROBE = new DMXSlot("Strobe", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_BEAM_SIZE_IRIS);
+    public static final DMXSlot SHUTTER = new DMXSlot("Shutter", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_BEAM_SIZE_IRIS);
 
     private ExtraLightsSlots() {
     }

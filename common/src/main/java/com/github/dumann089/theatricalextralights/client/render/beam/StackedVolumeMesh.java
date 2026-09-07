@@ -19,8 +19,20 @@ public final class StackedVolumeMesh {
     }
 
     public static int discCount(float scanLen) {
+        return discCount(scanLen, false);
+    }
+
+    public static int discCount(float scanLen, boolean laserProfile) {
+        if (laserProfile) {
+            int discs = Math.round(scanLen * 0.22f);
+            return Math.max(14, Math.min(20, discs));
+        }
         int discs = Math.round(scanLen * 0.75f);
         return Math.max(32, Math.min(64, discs));
+    }
+
+    public static int estimateSheetQuads() {
+        return 6;
     }
 
     public static int estimateQuads(int discs) {
@@ -34,10 +46,17 @@ public final class StackedVolumeMesh {
 
     public static float sliceAlpha(float dist, float scanLen, float density, float maxAlpha,
                                    float fadeLen, boolean hitBlock) {
+        return sliceAlpha(dist, scanLen, density, maxAlpha, fadeLen, hitBlock, false);
+    }
+
+    public static float sliceAlpha(float dist, float scanLen, float density, float maxAlpha,
+                                   float fadeLen, boolean hitBlock, boolean laserProfile) {
         float dRef = Math.max(scanLen * 0.35f, 1.0f);
         float dn = dist / dRef;
-        float falloff = 1.0f / (1.0f + dn * dn);
-        float along = (float) Math.exp(-(dist / Math.max(scanLen, 1.0e-3f)) * density);
+        float falloff = laserProfile
+                ? 1.0f / (1.0f + 0.15f * (dist / Math.max(scanLen, 1.0f)))
+                : 1.0f / (1.0f + dn * dn);
+        float along = laserProfile ? 1.0f : (float) Math.exp(-(dist / Math.max(scanLen, 1.0e-3f)) * density);
         float endFade = 1.0f;
         if (fadeLen > 0.0f && !hitBlock) {
             float left = scanLen - dist;
@@ -61,6 +80,14 @@ public final class StackedVolumeMesh {
      */
     public static int build(float[] dest, BeamRenderData data, float scanLen,
                             float density, float maxAlpha, float fadeLen, boolean hitBlock, int discs) {
+        if (data.laserSheet()) {
+            float alpha = Math.max(0.03f, maxAlpha * 0.28f);
+            return buildSheet(dest, data, scanLen, alpha);
+        }
+        if (data.laserProfile()) {
+            return 0;
+        }
+
         Axes axes = Axes.from(data);
         int idx = 0;
         int quads = 0;
@@ -85,7 +112,7 @@ public final class StackedVolumeMesh {
             float radius = radiusAt(dist, data.tanHalfAngle(), data.baseRadius());
             rW[i] = radius * data.widthScale();
             rH[i] = radius * data.heightScale();
-            al[i] = sliceAlpha(dist, scanLen, density, maxAlpha, fadeLen, hitBlock);
+            al[i] = sliceAlpha(dist, scanLen, density, maxAlpha, fadeLen, hitBlock, false);
         }
 
         for (int i = 0; i < discs; i++) {
@@ -128,18 +155,72 @@ public final class StackedVolumeMesh {
         return quads;
     }
 
+    public static int buildSheet(float[] dest, BeamRenderData data, float scanLen, float alpha) {
+        Axes axes = Axes.from(data);
+        float half = (float) Math.atan(Math.max(data.tanHalfAngle(), 1.0e-4f));
+        float c = (float) Math.cos(half);
+        float s = (float) Math.sin(half);
+        float ox = (float) data.origin().x;
+        float oy = (float) data.origin().y;
+        float oz = (float) data.origin().z;
+        float ax = ox + (float) (axes.bx * c + axes.ux * s) * scanLen;
+        float ay = oy + (float) (axes.by * c + axes.uy * s) * scanLen;
+        float az = oz + (float) (axes.bz * c + axes.uz * s) * scanLen;
+        float bx = ox + (float) (axes.bx * c - axes.ux * s) * scanLen;
+        float by = oy + (float) (axes.by * c - axes.uy * s) * scanLen;
+        float bz = oz + (float) (axes.bz * c - axes.uz * s) * scanLen;
+        float nx = (float) (axes.vx * data.baseRadius());
+        float ny = (float) (axes.vy * data.baseRadius());
+        float nz = (float) (axes.vz * data.baseRadius());
+
+        int idx = 0;
+        int quads = 0;
+        idx = emitSheetTri(dest, idx, ox, oy, oz, ax, ay, az, bx, by, bz, alpha);
+        quads++;
+        idx = emitSheetTri(dest, idx, ox, oy, oz, bx, by, bz, ax, ay, az, alpha);
+        quads++;
+        idx = emitSheetTri(dest, idx, ox + nx, oy + ny, oz + nz, ax + nx, ay + ny, az + nz, bx + nx, by + ny, bz + nz, alpha * 0.55f);
+        quads++;
+        idx = emitSheetTri(dest, idx, ox + nx, oy + ny, oz + nz, bx + nx, by + ny, bz + nz, ax + nx, ay + ny, az + nz, alpha * 0.55f);
+        quads++;
+        idx = emitSheetTri(dest, idx, ox - nx, oy - ny, oz - nz, ax - nx, ay - ny, az - nz, bx - nx, by - ny, bz - nz, alpha * 0.55f);
+        quads++;
+        idx = emitSheetTri(dest, idx, ox - nx, oy - ny, oz - nz, bx - nx, by - ny, bz - nz, ax - nx, ay - ny, az - nz, alpha * 0.55f);
+        quads++;
+        return quads;
+    }
+
+    private static int emitSheetTri(float[] dest, int idx,
+                                    float x0, float y0, float z0,
+                                    float x1, float y1, float z1,
+                                    float x2, float y2, float z2,
+                                    float alpha) {
+        idx = put(dest, idx, x0, y0, z0, 0f, 0f, alpha);
+        idx = put(dest, idx, x1, y1, z1, 1f, 0f, alpha);
+        idx = put(dest, idx, x2, y2, z2, 1f, 1f, alpha);
+        idx = put(dest, idx, x0, y0, z0, 0f, 1f, alpha);
+        return idx;
+    }
+
     public static int buildCenters(float[] dest, BeamRenderData data, float scanLen,
                                    float density, float maxAlpha, float fadeLen, boolean hitBlock, int discs) {
+        if (data.laserSheet()) {
+            return 0;
+        }
         Axes axes = Axes.from(data);
         int n = 0;
+        float coreBoost = data.laserProfile() ? 1.8f : 0.7f;
         for (int i = 0; i < discs; i++) {
             float t = i / (float) (discs - 1);
             float dist = t * scanLen;
-            float alpha = sliceAlpha(dist, scanLen, density, maxAlpha, fadeLen, hitBlock) * 0.7f;
+            float alpha = sliceAlpha(dist, scanLen, density, maxAlpha, fadeLen, hitBlock, data.laserProfile()) * coreBoost;
             if (alpha <= 0.001f) {
                 continue;
             }
             float radius = radiusAt(dist, data.tanHalfAngle(), data.baseRadius());
+            if (data.laserProfile()) {
+                radius *= 0.55f;
+            }
             int o = n * CENTER_STRIDE;
             dest[o] = (float) (data.origin().x + axes.bx * dist);
             dest[o + 1] = (float) (data.origin().y + axes.by * dist);

@@ -26,6 +26,8 @@ uniform float Time;
 uniform float Ambient;
 uniform vec2 ScreenSize;
 uniform int StepCount;
+uniform int LaserProfile;
+uniform int LaserSheet;
 
 in vec4 vertexColor;
 in vec2 texCoord0;
@@ -86,6 +88,68 @@ vec3 reconstructViewPos(vec2 uv, float depth) {
     return view.xyz / max(view.w, 1.0e-6);
 }
 
+// Axis-aligned slab intersection in the beam orthonormal frame.
+bool intersectBeamBox(vec3 ro, vec3 rd, float uMin, float uMax, float vMin, float vMax,
+                      float zMin, float zMax, out float tEnter, out float tExit) {
+    vec3 axis = normalize(BeamDir);
+    vec3 uA = normalize(AxisU);
+    vec3 vA = normalize(AxisV);
+    vec3 o = ro - BeamOrigin;
+    float ou = dot(o, uA);
+    float ov = dot(o, vA);
+    float oz = dot(o, axis);
+    float du = dot(rd, uA);
+    float dv = dot(rd, vA);
+    float dz = dot(rd, axis);
+
+    tEnter = 0.0;
+    tExit = 1.0e6;
+
+    // U slab
+    if (abs(du) < 1.0e-7) {
+        if (ou < uMin || ou > uMax) {
+            return false;
+        }
+    } else {
+        float tA = (uMin - ou) / du;
+        float tB = (uMax - ou) / du;
+        tEnter = max(tEnter, min(tA, tB));
+        tExit = min(tExit, max(tA, tB));
+        if (tExit <= tEnter) {
+            return false;
+        }
+    }
+    // V slab
+    if (abs(dv) < 1.0e-7) {
+        if (ov < vMin || ov > vMax) {
+            return false;
+        }
+    } else {
+        float tA = (vMin - ov) / dv;
+        float tB = (vMax - ov) / dv;
+        tEnter = max(tEnter, min(tA, tB));
+        tExit = min(tExit, max(tA, tB));
+        if (tExit <= tEnter) {
+            return false;
+        }
+    }
+    // Z slab
+    if (abs(dz) < 1.0e-7) {
+        if (oz < zMin || oz > zMax) {
+            return false;
+        }
+    } else {
+        float tA = (zMin - oz) / dz;
+        float tB = (zMax - oz) / dz;
+        tEnter = max(tEnter, min(tA, tB));
+        tExit = min(tExit, max(tA, tB));
+        if (tExit <= tEnter) {
+            return false;
+        }
+    }
+    return tExit > tEnter;
+}
+
 // Tight ray/cone intersection so the march interval hugs the actual beam.
 // The cone apex sits BaseRadius/tan behind the origin so the bound matches
 // the truncated cone; the truncated solid cone is convex, therefore the
@@ -94,6 +158,17 @@ vec3 reconstructViewPos(vec2 uv, float depth) {
 // whole length and starve the narrow region near the source when looking
 // along the beam, making the near half vanish.
 bool intersectBounds(vec3 ro, vec3 rd, out float tEnter, out float tExit) {
+    float R = max(BaseRadius, 1.0e-3) * 1.35;
+    if (LaserSheet != 0) {
+        float k = max(TanHalfAngle, 1.0e-4);
+        float halfW = BeamLength * k + R;
+        // U = in-plane fan, V = thickness (plane normal)
+        return intersectBeamBox(ro, rd, -halfW, halfW, -R, R, 0.0, BeamLength, tEnter, tExit);
+    }
+    if (LaserProfile != 0) {
+        return intersectBeamBox(ro, rd, -R, R, -R, R, 0.0, BeamLength, tEnter, tExit);
+    }
+
     vec3 axis = normalize(BeamDir);
     vec3 uA = normalize(AxisU);
     vec3 vA = normalize(AxisV);
@@ -258,8 +333,9 @@ void main() {
     // Reference distance for the inverse-square falloff: brightest third of
     // the throw, so short and long beams keep a comparable look.
     float dRef = max(BeamLength * 0.35, 1.0);
-    float sigmaS = Density * 2.5;   // scattering coefficient
-    float sigmaT = sigmaS * 0.5;    // extinction (thin haze, weak self-occlusion)
+    float laserness = (LaserProfile != 0 || LaserSheet != 0) ? 1.0 : 0.0;
+    float sigmaS = Density * mix(2.5, 4.0, laserness);
+    float sigmaT = sigmaS * mix(0.5, 0.18, laserness);
 
     // Physically-based single scattering, front to back:
     //   L += T * sigma_s * phase * L_beam(x) * dt ;  T *= exp(-sigma_t * dt)
@@ -279,22 +355,49 @@ void main() {
             continue;
         }
 
-        float radius = max(BaseRadius, zDist * k);
         float u = dot(toPos, uAxis) / wScale;
         float v = dot(toPos, vAxis) / hScale;
-        float radial01 = length(vec2(u, v)) / radius;
-        if (radial01 > 1.0) {
-            t += dt;
-            continue;
+        float profile;
+        float falloff;
+
+        if (LaserSheet != 0) {
+            float thick01 = abs(v) / max(BaseRadius, 1.0e-4);
+            float span = max(zDist * max(TanHalfAngle, 1.0e-5), BaseRadius);
+            float ang01 = abs(u) / span;
+            if (thick01 > 1.15 || ang01 > 1.0) {
+                t += dt;
+                continue;
+            }
+            // Deux fils (bords) + haze qui les rejoint.
+            float edgeRay = exp(-pow(1.0 - ang01, 2.0) * 70.0);
+            float fill = 0.22 * (1.0 - ang01 * ang01 * 0.25);
+            float thickCore = exp(-thick01 * thick01 * 45.0);
+            float thickHaze = exp(-thick01 * thick01 * 3.2);
+            profile = thickHaze * fill + thickCore * edgeRay * 1.6;
+            falloff = 1.0 / (1.0 + 0.10 * (zDist / max(BeamLength, 1.0)));
+        } else if (LaserProfile != 0) {
+            float radius = max(BaseRadius, 1.0e-4);
+            float radial01 = length(vec2(u, v)) / radius;
+            if (radial01 > 1.15) {
+                t += dt;
+                continue;
+            }
+            float core = exp(-radial01 * radial01 * 70.0);
+            float haze = exp(-radial01 * radial01 * 3.4);
+            profile = core * 2.8 + haze * 0.42;
+            profile *= 1.0 + 0.7 * exp(-zDist * 4.5);
+            falloff = 1.0 / (1.0 + 0.10 * (zDist / max(BeamLength, 1.0)));
+        } else {
+            float radius = max(BaseRadius, zDist * k);
+            float radial01 = length(vec2(u, v)) / radius;
+            if (radial01 > 1.0) {
+                t += dt;
+                continue;
+            }
+            profile = exp(-radial01 * radial01 * 2.5) * (1.0 - smoothstep(0.75, 1.0, radial01));
+            float dn = zDist / dRef;
+            falloff = 1.0 / (1.0 + dn * dn);
         }
-
-        // Bright core with a gaussian shoulder and fully soft rim.
-        float profile = exp(-radial01 * radial01 * 2.5) * (1.0 - smoothstep(0.75, 1.0, radial01));
-
-        // Inverse-square falloff from the source (softened near zero so the
-        // origin glows without turning into a fireball).
-        float dn = zDist / dRef;
-        float falloff = 1.0 / (1.0 + dn * dn);
 
         float endFade = 1.0;
         if (FadeLength > 0.0) {
@@ -306,12 +409,15 @@ void main() {
         float depthFade = clamp((sceneT - t) * 2.0, 0.0, 1.0);
         // Ease-in when the camera is inside the volume so walking through
         // the beam never pops.
-        float camFade = smoothstep(0.0, 1.5, t);
+        float camFade = laserness > 0.5 ? smoothstep(0.0, 0.28, t) : smoothstep(0.0, 1.5, t);
 
-        float gobo = sampleGobo(toPos, zDist);
-        if (gobo < 0.01) {
-            t += dt;
-            continue;
+        float gobo = 1.0;
+        if (LaserProfile == 0 && LaserSheet == 0) {
+            gobo = sampleGobo(toPos, zDist);
+            if (gobo < 0.01) {
+                t += dt;
+                continue;
+            }
         }
 
         // Volumetric haze: domain-warped fBm billows plus fine drifting wisps.
@@ -326,7 +432,11 @@ void main() {
             float wisp = vnoise(pos * 3.1 + wind * 2.4);
             float h = billow * (0.65 + 0.7 * wisp);
             h = h * h * 1.8; // contrast: darker gaps, brighter curls
-            haze = mix(1.0, 0.25 + h, clamp(DustAmount, 0.0, 1.0));
+            float dustMix = clamp(DustAmount, 0.0, 1.0);
+            if (laserness > 0.5) {
+                dustMix *= 0.28;
+            }
+            haze = mix(1.0, 0.25 + h, dustMix);
         }
 
         // Isotropic base keeps side views visible; HG adds the forward boost.
@@ -336,7 +446,16 @@ void main() {
         float phase = 0.3 + henyeyGreenstein(cosTheta, g);
 
         float density = sigmaS * profile * haze;
-        vec3 radiance = tint * (Intensity * falloff * gobo * endFade);
+        vec3 laserTint = tint;
+        if (LaserProfile != 0) {
+            float whiteCore = clamp(exp(-(u * u + v * v) / max(BaseRadius * BaseRadius, 1.0e-6) * 90.0) * 0.9, 0.0, 1.0);
+            laserTint = mix(tint, vec3(1.0), whiteCore);
+        } else if (LaserSheet != 0) {
+            float spanW = max(zDist * max(TanHalfAngle, 1.0e-5), BaseRadius);
+            float edgeW = exp(-pow(1.0 - abs(u) / spanW, 2.0) * 80.0);
+            laserTint = mix(tint, vec3(1.0), clamp(edgeW * 0.55, 0.0, 1.0));
+        }
+        vec3 radiance = laserTint * (Intensity * falloff * gobo * endFade);
         scattered += T * density * phase * radiance * (depthFade * camFade * dt);
         // Extinction follows the same haze density: thick curls softly shadow
         // what lies behind them, which is what sells the 3D volume.
@@ -345,7 +464,7 @@ void main() {
         t += dt;
     }
 
-    vec3 accum = scattered * (Brightness * MaxAlpha * 80.0);
+    vec3 accum = scattered * (Brightness * MaxAlpha * mix(80.0, 260.0, laserness));
 
     // Daylight washes outdoor haze, but indoor rigs stay readable.
     accum *= mix(1.0, 0.55, clamp(Ambient, 0.0, 1.0));
@@ -355,9 +474,12 @@ void main() {
         discard;
     }
 
-    // Hue-preserving soft rolloff: the core saturates smoothly toward the
-    // lamp colour instead of blowing out to flat white.
-    vec3 mapped = accum * ((1.0 - exp(-lum * 1.4)) / lum);
+    vec3 mapped;
+    if (laserness > 0.5) {
+        mapped = accum / (accum + vec3(0.38));
+    } else {
+        mapped = accum * ((1.0 - exp(-lum * 1.4)) / lum);
+    }
 
     fragColor = vec4(max(mapped, 0.0), 1.0);
 }
