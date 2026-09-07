@@ -1,6 +1,6 @@
 package com.github.dumann089.theatricalextralights.client.blockentities;
 
-import com.github.dumann089.theatricalextralights.blockentities.LaserBlockEntity;
+import com.github.dumann089.theatricalextralights.client.gobo.GoboLibrary;
 import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
 import com.github.dumann089.theatricalextralights.blockentities.LaserMirrorBlockEntity;
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
@@ -11,7 +11,6 @@ import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
 import dev.imabad.theatrical.client.LazyRenderers;
 import dev.imabad.theatrical.client.TheatricalRenderTypes;
-import com.github.dumann089.theatricalextralights.client.blockentities.ExtraLightsRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -24,7 +23,7 @@ import org.joml.Matrix4f;
 
 import java.util.Optional;
 
-public class LaserMirrorRenderer extends ExtraLightsRenderer<LaserMirrorBlockEntity> {
+public class LaserMirrorRenderer extends ExtraLightsFixtureRenderer<LaserMirrorBlockEntity> {
     private BakedModel cachedPanModel, cachedTiltModel, cachedStaticModel;
 
     public LaserMirrorRenderer(BlockEntityRendererProvider.Context context) {
@@ -119,6 +118,10 @@ public class LaserMirrorRenderer extends ExtraLightsRenderer<LaserMirrorBlockEnt
                                  BlockState blockstate, boolean isHanging, int packedLight, int packedOverlay) {
 
         if (blockEntity.getIntensity() > 0) {
+            submitMirrorVolumes(blockEntity, facing, partialTicks, isFlipped, blockstate, isHanging);
+            if (TheatricalExtraLightsConfig.isVolumetricBeamEnabled()) {
+                return;
+            }
             LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
                 @Override
                 public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, Camera camera, float partialTick) {
@@ -187,6 +190,56 @@ public class LaserMirrorRenderer extends ExtraLightsRenderer<LaserMirrorBlockEnt
                 }
             });
         }
+    }
+
+    private void submitMirrorVolumes(LaserMirrorBlockEntity blockEntity, Direction facing, float partialTicks,
+                                     boolean isFlipped, BlockState blockstate, boolean isHanging) {
+        if (!TheatricalExtraLightsConfig.isVolumetricBeamEnabled()) {
+            return;
+        }
+        float intensity = blockEntity.getPrevIntensity()
+                + ((blockEntity.getIntensity() - blockEntity.getPrevIntensity()) * partialTicks);
+        float intensity01 = Math.min(1.0f, (intensity / 255f) * 1.35f);
+        if (intensity01 <= 0.0f) {
+            return;
+        }
+
+        int focus = blockEntity.getFocus();
+        int beamCount = Math.max(1, Math.min(9, (int) Math.ceil(focus / 255.0f * 9)));
+        float[] angles = generateMirrorAngles(beamCount);
+        float focusNorm = focus / 255f;
+        float volLen = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
+        float hazeRadius = 0.11f + focusNorm * 0.05f;
+        int color = blockEntity.getColour();
+
+        Vec3 baseOrigin = new Vec3(0.5F, 0.347F, 0.5F);
+        if (isHanging) {
+            baseOrigin = new Vec3(baseOrigin.x, 1.0 - baseOrigin.y, baseOrigin.z);
+        }
+
+        for (float angle : angles) {
+            PoseStack beamPose = new PoseStack();
+            preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
+            beamPose.translate(baseOrigin.x, baseOrigin.y, baseOrigin.z);
+            beamPose.mulPose(Axis.YP.rotationDegrees(angle));
+            beamPose.mulPose(Axis.YP.rotationDegrees(180.0F));
+            submitVolumetricBeam(
+                    blockEntity, beamPose, partialTicks,
+                    0.05f, 0.05f, GoboLibrary.MACVIP, 0, 0.0f,
+                    1.0f, 1.0f, 0, color, intensity01 * 1.25f, hazeRadius, volLen, true, true, false
+            );
+        }
+    }
+
+    private static float[] generateMirrorAngles(int count) {
+        if (count == 1) return new float[]{0f};
+        float[] angles = new float[count];
+        float maxAngle = 15f;
+        float step = (2 * maxAngle) / (count - 1);
+        for (int i = 0; i < count; i++) {
+            angles[i] = -maxAngle + (i * step);
+        }
+        return angles;
     }
 
     protected void renderLightBeam(VertexConsumer builder, PoseStack stack, LaserMirrorBlockEntity tileEntityFixture, float partialTicks, float alpha, float beamSize, float length, int color) {

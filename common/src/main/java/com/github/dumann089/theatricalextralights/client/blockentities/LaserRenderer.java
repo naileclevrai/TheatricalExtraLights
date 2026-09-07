@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.client.blockentities;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
+import com.github.dumann089.theatricalextralights.client.gobo.GoboLibrary;
 import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
 import com.github.dumann089.theatricalextralights.blockentities.LaserBlockEntity;
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
@@ -9,12 +10,10 @@ import com.github.dumann089.theatricalextralights.laser.LaserPattern;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import java.util.Deque;
 import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
 import dev.imabad.theatrical.client.LazyRenderers;
 import dev.imabad.theatrical.client.TheatricalRenderTypes;
-import com.github.dumann089.theatricalextralights.client.blockentities.ExtraLightsRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -34,7 +33,7 @@ import org.joml.Matrix4f;
 import java.util.List;
 import java.util.Optional;
 
-public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
+public class LaserRenderer extends ExtraLightsFixtureRenderer<LaserBlockEntity> {
     private BakedModel cachedPanModel, cachedTiltModel, cachedStaticModel;
     // DEBUG: throttle render-side logs to one print every ~120 frames
     private int renderLogTick = 0;
@@ -126,6 +125,11 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
             return;
         }
 
+        submitLaserVolumes(blockEntity, facing, partialTicks, isFlipped, blockstate, isHanging);
+        if (TheatricalExtraLightsConfig.isVolumetricBeamEnabled()) {
+            return;
+        }
+
         LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
             @Override
             public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, Camera camera, float partialTick) {
@@ -167,8 +171,10 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
                 }
 
                 int focus = blockEntity.getFocus();
-                float beamWidth = 0.04f + (focus / 255f) * 0.10f;
+                float focusNorm = focus / 255f;
+                float beamWidth = 0.008f + focusNorm * 0.018f;
                 float baseLength = TheatricalExtraLightsConfig.getLaserBeamLength();
+                float volCap = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
 
                 Vec3 baseOrigin = new Vec3(0.5F, 0.5F, 0.0F);
                 if (isHanging) {
@@ -184,69 +190,33 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
                     effLengths[i] = raycastBeamLengthDebug(blockEntity, beam.yawDeg, beam.pitchDeg, maxLen, hit, null);
                     beamHits[i] = true;
                 }
-                boolean anyHit = true;
 
-                // 1. CALCULAR EXTREMOS (ENDPOINTS) ACTUALES
                 Vec3[] currentEndpoints = new Vec3[beams.size()];
                 for (int i = 0; i < beams.size(); i++) {
                     LaserBeam beam = beams.get(i);
                     currentEndpoints[i] = computeEndpoint(baseOrigin, beam.yawDeg, beam.pitchDeg, effLengths[i]);
                 }
 
-                // 2. RENDERIZADO DE LOS RAYOS PRINCIPALES (¡Ahora va primero!)
-                if (anyHit) {
-                    for (int idx = 0; idx < beams.size(); idx++) {
-                        if (!beamHits[idx]) continue;
-                        LaserBeam beam = beams.get(idx);
-                        renderOneBeam(beamConsumer, poseStack, baseOrigin,
-                                beam.yawDeg, beam.pitchDeg, effLengths[idx], beamWidth,
-                                beam.color, intensity01);
-                    }
-                }
-
-                // 3. SISTEMA DE ESTELA ESPACIAL (CANAL 19) (¡Ahora va después!)
                 int persistenceRaw = blockEntity.getPersistenceRaw();
                 if (persistenceRaw > 0 && beams.size() > 1) {
-                    // Escala la opacidad basándose en el valor DMX
                     float persistAlpha = (persistenceRaw / 255f) * intensity01 * 0.8f;
-
-                    // Si el patrón es cerrado (ej. círculo), conecta el último punto con el primero
                     int loopLimit = pattern.isClosed() ? beams.size() : beams.size() - 1;
-
                     for (int i = 0; i < loopLimit; i++) {
                         int nextIdx = (i + 1) % beams.size();
                         Vec3 pA = currentEndpoints[i];
                         Vec3 pB = currentEndpoints[nextIdx];
                         int color = beams.get(i).color;
-
-                        // Dibuja el plano/cortina de luz desde la base del láser hasta la línea A-B
                         renderCurtain(beamConsumer, poseStack, baseOrigin, pA, pB, color, persistAlpha * 0.35f);
-
-                        // Dibuja el borde conector entre los puntos
                         renderRibbon(beamConsumer, poseStack, pA, pB, beamWidth * 0.5f, color, persistAlpha);
                     }
                 }
 
-                // 3. RENDERIZADO DE LOS RAYOS PRINCIPALES
-                if (anyHit) {
-                    for (int idx = 0; idx < beams.size(); idx++) {
-                        if (!beamHits[idx]) continue;
-                        LaserBeam beam = beams.get(idx);
-                        renderOneBeam(beamConsumer, poseStack, baseOrigin,
-                                beam.yawDeg, beam.pitchDeg, effLengths[idx], beamWidth,
-                                beam.color, intensity01);
-                    }
-                }
-
-                // 4. RENDERIZADO DE LOS RAYOS PRINCIPALES
-                if (anyHit) {
-                    for (int idx = 0; idx < beams.size(); idx++) {
-                        if (!beamHits[idx]) continue;
-                        LaserBeam beam = beams.get(idx);
-                        renderOneBeam(beamConsumer, poseStack, baseOrigin,
-                                beam.yawDeg, beam.pitchDeg, effLengths[idx], beamWidth,
-                                beam.color, intensity01);
-                    }
+                for (int idx = 0; idx < beams.size(); idx++) {
+                    if (!beamHits[idx]) continue;
+                    LaserBeam beam = beams.get(idx);
+                    renderOneBeam(beamConsumer, poseStack, baseOrigin,
+                            beam.yawDeg, beam.pitchDeg, effLengths[idx], beamWidth,
+                            beam.color, intensity01);
                 }
 
                 poseStack.popPose();
@@ -257,6 +227,184 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
                 return blockEntity.getBlockPos().getCenter();
             }
         });
+    }
+
+    /** Halo visible sans noyer la salle. */
+    private static final float LASER_HAZE_MIN = 0.11f;
+    private static final float LASER_HAZE_MAX = 0.16f;
+    private static final float LASER_SHEET_THICKNESS = 0.08f;
+    private static final int MAX_VOLUMETRIC_RAYS = 12;
+
+    private void submitLaserVolumes(LaserBlockEntity blockEntity, Direction facing, float partialTicks,
+                                    boolean isFlipped, BlockState blockstate, boolean isHanging) {
+        if (!TheatricalExtraLightsConfig.isVolumetricBeamEnabled()) {
+            return;
+        }
+        float intensity = blockEntity.getPrevIntensity()
+                + ((blockEntity.getIntensity() - blockEntity.getPrevIntensity()) * partialTicks);
+        float intensity01 = Math.min(1.0f, intensity / 255f);
+        if (intensity01 <= 0.0f) {
+            return;
+        }
+
+        int c1 = blockEntity.getColour();
+        int c2 = blockEntity.getColour2();
+        int c3 = blockEntity.getColour3();
+        if (c2 == 0) c2 = c1;
+        if (c3 == 0) c3 = c2;
+
+        double animTimeSec = (blockEntity.getLevel().getGameTime() + partialTicks) / 20.0;
+        LaserPattern pattern = blockEntity.getPattern();
+        List<LaserBeam> beams = pattern.generate(
+                blockEntity.getSizeRaw(),
+                blockEntity.getAmplitudeRaw(),
+                blockEntity.getSpeedRaw(),
+                blockEntity.getRotationRaw(),
+                animTimeSec,
+                c1, c2, c3
+        );
+        if (beams.isEmpty()) {
+            return;
+        }
+
+        float focusNorm = blockEntity.getFocus() / 255f;
+        float baseLength = TheatricalExtraLightsConfig.getLaserBeamLength();
+        float volCap = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
+        float hazeRadius = LASER_HAZE_MIN + focusNorm * (LASER_HAZE_MAX - LASER_HAZE_MIN);
+
+        Vec3 baseOrigin = new Vec3(0.5F, 0.5F, 0.0F);
+        if (isHanging) {
+            baseOrigin = new Vec3(baseOrigin.x, 1.0 - baseOrigin.y, baseOrigin.z);
+        }
+
+        int n = beams.size();
+        int rayStep = n <= MAX_VOLUMETRIC_RAYS
+                ? 1
+                : Math.max(1, (n + MAX_VOLUMETRIC_RAYS - 1) / MAX_VOLUMETRIC_RAYS);
+        int submitted = 0;
+        int[] pick = new int[MAX_VOLUMETRIC_RAYS];
+        float[] pickLen = new float[MAX_VOLUMETRIC_RAYS];
+        for (int i = 0; i < n && submitted < MAX_VOLUMETRIC_RAYS; i += rayStep) {
+            pick[submitted] = i;
+            LaserBeam beam = beams.get(i);
+            float maxLen = baseLength * (beam.length / 32f);
+            boolean[] hit = new boolean[1];
+            pickLen[submitted] = Math.min(
+                    raycastBeamLengthDebug(blockEntity, beam.yawDeg, beam.pitchDeg, maxLen, hit, null),
+                    volCap);
+            submitted++;
+        }
+
+        for (int s = 0; s < submitted; s++) {
+            LaserBeam beam = beams.get(pick[s]);
+            PoseStack beamPose = new PoseStack();
+            preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
+            beamPose.translate(baseOrigin.x, baseOrigin.y, baseOrigin.z);
+            beamPose.mulPose(Axis.YP.rotationDegrees(beam.yawDeg));
+            beamPose.mulPose(Axis.XP.rotationDegrees(beam.pitchDeg));
+            // Les spots volumétriques partent en -Z ; le laser historique part en +Z.
+            beamPose.mulPose(Axis.YP.rotationDegrees(180.0F));
+
+            submitVolumetricBeam(
+                    blockEntity, beamPose, partialTicks,
+                    0.05f, 0.05f,
+                    GoboLibrary.MACVIP, 0, 0.0f,
+                    1.0f, 1.0f, 0,
+                    beam.color, intensity01 * 1.25f, hazeRadius, pickLen[s], true, true, false
+            );
+        }
+
+        int persistenceRaw = blockEntity.getPersistenceRaw();
+        if (persistenceRaw > 0 && submitted > 1) {
+            float sheetIntensity = intensity01 * (persistenceRaw / 255f) * 0.40f;
+            int sheetCount = pattern.isClosed() ? submitted : submitted - 1;
+            for (int s = 0; s < sheetCount; s++) {
+                int i0 = pick[s];
+                int i1 = pick[(s + 1) % submitted];
+                float sheetLen = Math.min(pickLen[s], pickLen[(s + 1) % submitted]);
+                if (sheetLen <= 0.05f || sheetIntensity <= 0.001f) {
+                    continue;
+                }
+                submitLaserSheet(blockEntity, facing, partialTicks, isFlipped, blockstate, isHanging,
+                        baseOrigin, beams.get(i0), beams.get(i1), sheetLen, sheetIntensity);
+            }
+        }
+    }
+
+    private void submitLaserSheet(LaserBlockEntity blockEntity, Direction facing, float partialTicks,
+                                  boolean isFlipped, BlockState blockstate, boolean isHanging,
+                                  Vec3 baseOrigin, LaserBeam a, LaserBeam b,
+                                  float sheetLen, float intensity) {
+        Vec3 dirA = localBeamDir(a.yawDeg, a.pitchDeg);
+        Vec3 dirB = localBeamDir(b.yawDeg, b.pitchDeg);
+        Vec3 bisector = dirA.add(dirB);
+        if (bisector.lengthSqr() < 1.0e-8) {
+            return;
+        }
+        bisector = bisector.normalize();
+        Vec3 planeN = dirA.cross(dirB);
+        if (planeN.lengthSqr() < 1.0e-10) {
+            return;
+        }
+        planeN = planeN.normalize();
+        Vec3 inPlane = planeN.cross(bisector);
+        if (inPlane.lengthSqr() < 1.0e-10) {
+            return;
+        }
+        inPlane = inPlane.normalize();
+        if (inPlane.dot(dirA.subtract(bisector)) < 0.0) {
+            inPlane = inPlane.scale(-1.0);
+        }
+
+        double cosHalf = Math.max(-1.0, Math.min(1.0, dirA.dot(bisector)));
+        float halfAngleDeg = (float) Math.toDegrees(Math.acos(cosHalf));
+        if (halfAngleDeg < 0.8f) {
+            return;
+        }
+        halfAngleDeg = Math.min(halfAngleDeg, 70.0f);
+
+        PoseStack sheetPose = new PoseStack();
+        preparePoseStack(blockEntity, sheetPose, facing, partialTicks, isFlipped, blockstate, isHanging);
+        sheetPose.translate(baseOrigin.x, baseOrigin.y, baseOrigin.z);
+        applyOrthonormalBasis(sheetPose, inPlane, planeN, bisector.scale(-1.0));
+
+        submitVolumetricBeam(
+                blockEntity, sheetPose, partialTicks,
+                halfAngleDeg, halfAngleDeg,
+                GoboLibrary.MACVIP, 0, 0.0f,
+                1.0f, 1.0f, 0,
+                a.color, intensity, LASER_SHEET_THICKNESS, sheetLen, true, false, true
+        );
+    }
+
+    /** Direction +Z après yaw/pitch (espace lentille, avant le flip volumétrique). */
+    private static Vec3 localBeamDir(float yawDeg, float pitchDeg) {
+        PoseStack tmp = new PoseStack();
+        tmp.mulPose(Axis.YP.rotationDegrees(yawDeg));
+        tmp.mulPose(Axis.XP.rotationDegrees(pitchDeg));
+        Matrix4f m = tmp.last().pose();
+        Vec3 dir = new Vec3(m.m20(), m.m21(), m.m22());
+        if (dir.lengthSqr() < 1.0e-8) {
+            return new Vec3(0.0, 0.0, 1.0);
+        }
+        return dir.normalize();
+    }
+
+    /** Colonnes X/Y/Z du pose = axes fournis (espace lentille). */
+    private static void applyOrthonormalBasis(PoseStack pose, Vec3 x, Vec3 y, Vec3 z) {
+        Matrix4f basis = new Matrix4f();
+        basis.m00((float) x.x);
+        basis.m01((float) x.y);
+        basis.m02((float) x.z);
+        basis.m10((float) y.x);
+        basis.m11((float) y.y);
+        basis.m12((float) y.z);
+        basis.m20((float) z.x);
+        basis.m21((float) z.y);
+        basis.m22((float) z.z);
+        basis.m33(1.0f);
+        pose.last().pose().mul(basis);
+        pose.last().normal().mul(new Matrix3f(basis));
     }
 
     private void renderOneBeam(VertexConsumer beamConsumer, PoseStack poseStack, Vec3 baseOrigin,

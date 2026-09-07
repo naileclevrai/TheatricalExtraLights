@@ -10,7 +10,9 @@ import com.github.dumann089.theatricalextralights.client.blockentities.*;
 import com.github.dumann089.theatricalextralights.client.entities.FireworkRocketRenderer;
 import com.github.dumann089.theatricalextralights.compat.FireworkLightCompat;
 import com.github.dumann089.theatricalextralights.entities.ModEntities;
+import com.github.dumann089.theatricalextralights.laser.dac.LaserDacRuntime;
 import com.github.dumann089.theatricalextralights.net.OpenExtraLightsScreenPacket;
+import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.client.level.entity.EntityRendererRegistry;
@@ -31,7 +33,9 @@ public class TheatricalExtraLightsClient {
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL.get(), BigPanelRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL2.get(), BigPanel2Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.RGB_BAR.get(), RGBbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.CHCB4.get(), Chcb4Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.LASER.get(), LaserRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.LASER_PROJECTOR.get(), LaserProjectorRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER.get(), BlinderRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER_WARM.get(), BlinderwarmRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.STROBE.get(), StrobeRenderer::new);
@@ -155,7 +159,14 @@ public class TheatricalExtraLightsClient {
 
         com.github.dumann089.theatricalextralights.client.followspot.FollowspotCameraClient.init();
 
+        // Forge FMLClientSetup runs after CLIENT_STARTED, so waiting on that event
+        // never starts the DAC. Start now, then keep the lifecycle hooks as backup.
+        LaserDacRuntime.start();
+        ClientLifecycleEvent.CLIENT_STARTED.register(client -> LaserDacRuntime.start());
+        ClientLifecycleEvent.CLIENT_STOPPING.register(client -> LaserDacRuntime.stop());
+
         ClientTickEvent.CLIENT_POST.register(client -> {
+            LaserDacRuntime.ensureStarted();
             ConfettiBurstClient.tick();
             DetachedPyroSparks.tick();
             if (client.level != null) {

@@ -40,6 +40,8 @@
     { "name": "Time", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "Ambient", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
-    { "name": "StepCount", "type": "int", "count": 1, "values": [ 16 ] }
+    { "name": "StepCount", "type": "int", "count": 1, "values": [ 16 ] },
+    { "name": "LaserProfile", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "LaserSheet", "type": "int", "count": 1, "values": [ 0 ] }
   ]
 }

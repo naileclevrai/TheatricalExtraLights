@@ -62,9 +62,11 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
         if (slot.fixturePos == null) {
             return;
         }
-        float rawScan = slot.hitBlock
-                ? Math.max(0.01f, slot.scanLen - 2.5f)
-                : TheatricalExtraLightsConfig.getVolumetricBeamDistance();
+        float rawScan = slot.exactScanLen
+                ? Math.max(0.01f, slot.scanLen)
+                : (slot.hitBlock
+                        ? Math.max(0.01f, slot.scanLen - 2.5f)
+                        : TheatricalExtraLightsConfig.getVolumetricBeamDistance());
         BeamRenderData data = new BeamRenderData(
                 slot.fixturePos,
                 new Vec3(slot.localOriginX, slot.localOriginY, slot.localOriginZ),
@@ -81,7 +83,10 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
                 null,
                 slot.widthScale,
                 slot.heightScale,
-                slot.baseRadius
+                slot.baseRadius,
+                slot.exactScanLen,
+                slot.laserProfile,
+                slot.laserSheet
         );
         FALLBACK_ONE_SHOT.activeBeamCount = 0;
         FALLBACK_ONE_SHOT.enqueueStacked(data, false);
@@ -106,8 +111,15 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
         }
 
         float maxDist = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
-        boolean hitBlock = data.scanLen() < maxDist;
-        float scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        boolean hitBlock;
+        float scanLen;
+        if (data.exactScanLen()) {
+            scanLen = Math.max(0.01f, data.scanLen());
+            hitBlock = scanLen + 0.05f < maxDist;
+        } else {
+            hitBlock = data.scanLen() < maxDist;
+            scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        }
         if (scanLen <= 0.0f) {
             return;
         }
@@ -115,7 +127,7 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
         float density = TheatricalExtraLightsConfig.getVolumetricBeamDensity();
         float maxAlpha = TheatricalExtraLightsConfig.getVolumetricBeamMaxAlpha();
         float fadeLen = TheatricalExtraLightsConfig.getVolumetricBeamFadeLength();
-        int discs = StackedVolumeMesh.discCount(scanLen);
+        int discs = StackedVolumeMesh.discCount(scanLen, data.laserProfile());
 
         int currentHash = 1;
         currentHash = 31 * currentHash + data.generateStateHash(discs);
@@ -127,7 +139,9 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
         currentHash = 31 * currentHash + (hitBlock ? 1231 : 1237);
 
         if (currentHash != cachedHashSlots[slot]) {
-            int needed = StackedVolumeMesh.estimateFloats(discs);
+            int needed = data.laserSheet()
+                    ? StackedVolumeMesh.estimateSheetQuads() * StackedVolumeMesh.FLOATS_PER_QUAD
+                    : StackedVolumeMesh.estimateFloats(discs);
             if (cachedVertsSlots[slot].length < needed) {
                 cachedVertsSlots[slot] = new float[needed + 512];
             }
@@ -142,8 +156,14 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
         this.beamG[slot] = (data.color() >> 8) & 0xFF;
         this.beamB[slot] = data.color() & 0xFF;
 
-        float rawIntensity = Math.min(data.intensity() * TheatricalExtraLightsConfig.getVolumetricBeamBrightness(), 1.0f);
-        this.beamAlphaScale[slot] = (float) Math.pow(rawIntensity, 0.45);
+        float rawIntensity = data.intensity() * TheatricalExtraLightsConfig.getVolumetricBeamBrightness();
+        if (data.laserProfile() || data.laserSheet()) {
+            rawIntensity = Math.min(rawIntensity * 1.8f, 1.0f);
+            this.beamAlphaScale[slot] = (float) Math.pow(rawIntensity, 0.40);
+        } else {
+            rawIntensity = Math.min(rawIntensity, 1.0f);
+            this.beamAlphaScale[slot] = (float) Math.pow(rawIntensity, 0.45);
+        }
         this.beamScanLen[slot] = scanLen;
         this.beamMidX[slot] = (float) (data.origin().x + data.beamDir().x * scanLen * 0.5);
         this.beamMidY[slot] = (float) (data.origin().y + data.beamDir().y * scanLen * 0.5);

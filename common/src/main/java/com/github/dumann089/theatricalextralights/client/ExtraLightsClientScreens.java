@@ -3,8 +3,10 @@ package com.github.dumann089.theatricalextralights.client;
 import com.github.dumann089.theatricalextralights.TheatricalExtraLightsScreens;
 import com.github.dumann089.theatricalextralights.blockentities.ExtraLightsLightBlockEntity;
 import com.github.dumann089.theatricalextralights.blockentities.FollowspotConsoleBlockEntity;
+import com.github.dumann089.theatricalextralights.blockentities.LaserProjectorBlockEntity;
 import com.github.dumann089.theatricalextralights.blockentities.LedFacadeBlockEntity;
 import com.github.dumann089.theatricalextralights.client.gui.ExtraLightsConfigScreen;
+import com.github.dumann089.theatricalextralights.client.gui.LaserProjectorScreen;
 import com.github.dumann089.theatricalextralights.client.gui.FixtureMountScreen;
 import com.github.dumann089.theatricalextralights.client.gui.FollowspotConsoleScreen;
 import com.github.dumann089.theatricalextralights.client.gui.LedFacadeScreen;
@@ -52,6 +54,13 @@ public class ExtraLightsClientScreens {
             return;
         }
 
+        if (screenType == TheatricalExtraLightsScreens.LASER_PROJECTOR) {
+            if (be instanceof LaserProjectorBlockEntity projector) {
+                mc.setScreen(new LaserProjectorScreen(projector, pos));
+            }
+            return;
+        }
+
         if (!(be instanceof BaseDMXConsumerLightBlockEntity lightBE)) {
             return;
         }
@@ -67,7 +76,7 @@ public class ExtraLightsClientScreens {
                     new ExtraLightsConfigScreen(lightBE, pos, lightBE.getTranslationKey(), false);
             case CHANNEL_PANTILT ->
                     new ExtraLightsConfigScreen(lightBE, pos, lightBE.getTranslationKey(), true);
-            case MOUNT_WRENCH, FOLLOWSPOT_CONSOLE, LED_FACADE -> null;
+            case MOUNT_WRENCH, FOLLOWSPOT_CONSOLE, LED_FACADE, LASER_PROJECTOR -> null;
         };
 
         if (gui != null) {
