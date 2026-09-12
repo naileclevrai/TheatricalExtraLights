@@ -20,6 +20,7 @@
   "block.theatricalextralights.moving_vl6": "Moving VL6 (7Ch/10Ch)",
   "block.theatricalextralights.par_led": "LED-Par",
   "block.theatricalextralights.rgb_bar": "RGB-Leiste",
+  "block.theatricalextralights.chcb4": "Color Block DB4 (12 Kanal)",
   "block.theatricalextralights.vertical_bar": "Vertikale RGB-Leiste",
   "block.theatricalextralights.blinder": "Blinder 4×2",
   "block.theatricalextralights.laser": "Laser",

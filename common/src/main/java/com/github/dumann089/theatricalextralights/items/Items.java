@@ -39,6 +39,10 @@ public class Items {
             "rgb_bar",
             () -> new BlockItem(Blocks.RGB_BAR.get(), new Item.Properties().arch$tab(TheatricalExtraLights.TAB))
     );
+    public static final RegistrySupplier<Item> CHCB4 = ITEMS.register(
+            "chcb4",
+            () -> new BlockItem(Blocks.CHCB4.get(), new Item.Properties().arch$tab(TheatricalExtraLights.TAB))
+    );
     public static final RegistrySupplier<Item> MINI_BAR = ITEMS.register(
             "mini_bar",
             () -> new BlockItem(Blocks.MINI_BAR_BLOCK.get(), new Item.Properties().arch$tab(TheatricalExtraLights.TAB))
