@@ -73,7 +73,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
 
         float maxDist = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
         boolean hitBlock = data.scanLen() < maxDist;
-        float scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        float scanLen = data.volumeLength(maxDist);
         if (scanLen <= 0.0f) {
             return;
         }
@@ -206,7 +206,10 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("MaxAlpha").set(maxAlpha);
                 shader.safeGetUniform("Brightness").set(brightness);
                 shader.safeGetUniform("Anisotropy").set(anisotropy);
-                shader.safeGetUniform("FadeLength").set(s.hitBlock ? 0.0f : fadeLen);
+                float contactFade = s.hitBlock
+                        ? (BeamRenderData.isOpenFloodGobo(s.goboTexture) ? 0.0f : 0.85f)
+                        : fadeLen;
+                shader.safeGetUniform("FadeLength").set(contactFade);
                 shader.safeGetUniform("DustAmount").set(dust);
                 shader.safeGetUniform("GoboRotation").set(s.goboRotation);
                 shader.safeGetUniform("WheelTransition").set(s.wheelTransition);

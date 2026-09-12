@@ -111,7 +111,7 @@ public class VolumetricBeamRenderer extends LazyRenderers.LazyRenderer {
 
         float maxDist = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
         boolean hitBlock = data.scanLen() < maxDist;
-        float scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
+        float scanLen = data.volumeLength(maxDist);
         if (scanLen <= 0.0f) {
             return;
         }
