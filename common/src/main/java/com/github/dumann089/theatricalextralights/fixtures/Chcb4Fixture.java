@@ -46,12 +46,12 @@ public class Chcb4Fixture extends Fixture {
     private static final ResourceLocation EMPTY_MODEL =
             new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/chcb4/empty");
 
-    /** Centres des 4 cellules sur la face sud (z = 10), Y au milieu de la barre. */
+    /** Centres des 4 LED sur la face sud (z = 10), releves sur la texture via les UV de la face. */
     public static final float[][] BEAM_POSITIONS = {
-            {3.0F / 16.0F, 1.5F / 16.0F, 10.0F / 16.0F},
-            {5.8F / 16.0F, 1.5F / 16.0F, 10.0F / 16.0F},
-            {8.8F / 16.0F, 1.5F / 16.0F, 10.0F / 16.0F},
-            {11.6F / 16.0F, 1.5F / 16.0F, 10.0F / 16.0F}
+            {3.47F / 16.0F, 1.30F / 16.0F, 10.0F / 16.0F},
+            {6.36F / 16.0F, 1.30F / 16.0F, 10.0F / 16.0F},
+            {9.25F / 16.0F, 1.30F / 16.0F, 10.0F / 16.0F},
+            {12.13F / 16.0F, 1.30F / 16.0F, 10.0F / 16.0F}
     };
 
     private final float[] tiltRotation = new float[]{0.5F, 0.5F, 0.5F};
