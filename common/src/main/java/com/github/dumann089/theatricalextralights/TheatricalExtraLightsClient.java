@@ -36,6 +36,7 @@ public class TheatricalExtraLightsClient {
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL.get(), BigPanelRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL2.get(), BigPanel2Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.RGB_BAR.get(), RGBbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.CHCB4.get(), Chcb4Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.LASER.get(), LaserRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER.get(), BlinderRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER_WARM.get(), BlinderwarmRenderer::new);
