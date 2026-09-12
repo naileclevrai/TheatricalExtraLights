@@ -89,6 +89,36 @@ public record BeamRenderData(
         return shutters != null && shutters.isActive();
     }
 
+    /** Open / wash cones may paint a circular wall spot. Pattern gobos must not. */
+    public static boolean isOpenFloodGobo(ResourceLocation gobo) {
+        if (gobo == null) {
+            return true;
+        }
+        String path = gobo.getPath();
+        return path.contains("/open")
+                || path.contains("/wash")
+                || path.endsWith("empty_fallback.png");
+    }
+
+    public boolean isOpenFloodGobo() {
+        return isOpenFloodGobo(goboTexture);
+    }
+
+    /**
+     * Length of the volumetric cone. Patterned gobos stop short of the wall so
+     * {@code GoboGPUProjector} owns the surface tache.
+     */
+    public float volumeLength(float maxDist) {
+        boolean hit = scanLen < maxDist;
+        if (!hit) {
+            return maxDist;
+        }
+        if (isOpenFloodGobo()) {
+            return scanLen + 2.5f;
+        }
+        return Math.max(0.05f, scanLen - 0.35f);
+    }
+
     public int generateStateHash(int slices) {
         int hash = 17;
         hash = 31 * hash + fixturePos.hashCode();
