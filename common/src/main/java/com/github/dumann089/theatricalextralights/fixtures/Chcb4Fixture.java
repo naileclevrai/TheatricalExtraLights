@@ -48,10 +48,10 @@ public class Chcb4Fixture extends Fixture {
 
     /** Centres des 4 LED sur la face sud (z = 10), releves sur la texture via les UV de la face. */
     public static final float[][] BEAM_POSITIONS = {
-            {3.65F / 16.0F, 1.48F / 16.0F, 10.0F / 16.0F},
-            {6.54F / 16.0F, 1.48F / 16.0F, 10.0F / 16.0F},
-            {9.43F / 16.0F, 1.48F / 16.0F, 10.0F / 16.0F},
-            {12.31F / 16.0F, 1.48F / 16.0F, 10.0F / 16.0F}
+            {3.65F / 16.0F, 1.62F / 16.0F, 10.0F / 16.0F},
+            {6.54F / 16.0F, 1.62F / 16.0F, 10.0F / 16.0F},
+            {9.43F / 16.0F, 1.62F / 16.0F, 10.0F / 16.0F},
+            {12.31F / 16.0F, 1.62F / 16.0F, 10.0F / 16.0F}
     };
 
     private final float[] tiltRotation = new float[]{0.5F, 0.5F, 0.5F};
