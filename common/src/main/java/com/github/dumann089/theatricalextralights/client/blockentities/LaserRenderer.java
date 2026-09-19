@@ -350,6 +350,12 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
                     path1, flags);
         }
 
+        Vec3 mean = Vec3.ZERO;
+        for (int i = 0; i < n; i++) {
+            mean = mean.add(dirs[i]);
+        }
+        fig.meanDir = mean.lengthSqr() > 1.0e-8 ? mean.normalize() : dirs[0];
+        fig.striation = (1f - persistence01) * 0.8f;
         fig.fixturePos = be.getBlockPos();
         fig.origin = originW;
         fig.intensity = intensity01;

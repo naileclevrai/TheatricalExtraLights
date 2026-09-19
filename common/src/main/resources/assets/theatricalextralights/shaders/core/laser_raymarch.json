@@ -33,6 +33,9 @@
     { "name": "ScanHead", "type": "float", "count": 1, "values": [0.0] },
     { "name": "ScanTrail", "type": "float", "count": 1, "values": [0.0] },
     { "name": "ImpactEnabled", "type": "float", "count": 1, "values": [1.0] },
+    { "name": "MeanDirW", "type": "float", "count": 3, "values": [0.0, 0.0, 1.0] },
+    { "name": "MeanDirV", "type": "float", "count": 3, "values": [0.0, 0.0, -1.0] },
+    { "name": "Striation", "type": "float", "count": 1, "values": [0.0] },
     { "name": "NoiseOctaves", "type": "int", "count": 1, "values": [3] },
     { "name": "Time", "type": "float", "count": 1, "values": [0.0] },
     { "name": "Ambient", "type": "float", "count": 1, "values": [0.0] }
