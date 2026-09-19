@@ -12,7 +12,7 @@ import com.mojang.math.Axis;
 import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
 import dev.imabad.theatrical.client.LazyRenderers;
-import dev.imabad.theatrical.client.TheatricalRenderTypes;
+import com.github.dumann089.theatricalextralights.client.ExtraLightsRenderTypes;
 import com.github.dumann089.theatricalextralights.client.blockentities.ExtraLightsRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.LightTexture;
@@ -148,7 +148,7 @@ public class ParLedRenderer extends ExtraLightsRenderer<ParLedBlockEntity> {
                             isHanging
                     );
                     VertexConsumer beamConsumer =
-                            multiBufferSource.getBuffer(TheatricalRenderTypes.BEAM);
+                            multiBufferSource.getBuffer(ExtraLightsRenderTypes.BEAM);
 
                     float intensity = blockEntity.getPrevIntensity()
                             + (blockEntity.getIntensity() - blockEntity.getPrevIntensity()) * partialTicks;
