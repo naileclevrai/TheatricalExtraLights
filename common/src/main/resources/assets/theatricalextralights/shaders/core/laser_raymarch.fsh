@@ -250,13 +250,17 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     // Bords du secteur adoucis sur l'empreinte d'un pixel ou l'epaisseur du faisceau.
     float s0 = dot(cross(dir0, qn), n);
     float s1 = dot(cross(qn, dir1), n);
-    float edgeSoft = max(PixelAngle * 1.5, (BeamRadius + r * Divergence) / r);
+    // Angle apparent du bord, borne : pres de la lentille le rapport rayon / distance
+    // exploserait et le halo envelopperait la source dans toutes les directions.
+    float edgeSoft = clamp((BeamRadius + r * Divergence) / r, PixelAngle * 1.5, 0.02);
     float mask = smoothstep(-edgeSoft, edgeSoft, s0) * smoothstep(-edgeSoft, edgeSoft, s1);
     // Halo au-dela des bords : la nappe ne se coupe pas au rasoir, elle s'eteint sur
-    // quelques degres comme la diffusion autour d'un trait.
-    float glowSoft = edgeSoft * 14.0;
+    // quelques degres comme la diffusion autour d'un trait. Jamais vers l'arriere.
+    vec3 mid = normalize(dir0 + dir1);
+    float forward = smoothstep(0.55, 0.85, dot(qn, mid));
+    float glowSoft = min(edgeSoft * 10.0, 0.05);
     float glow = smoothstep(-glowSoft, glowSoft * 0.5, s0) * smoothstep(-glowSoft, glowSoft * 0.5, s1);
-    mask = max(mask, glow * 0.18);
+    mask = max(mask, glow * 0.15 * forward);
     if (mask < 0.002) {
         return vec3(0.0);
     }
@@ -399,9 +403,10 @@ void main() {
             vec3 toO = OriginV / ot;
             float ang = acos(clamp(dot(rd, toO), -1.0, 1.0));
             float towards = clamp(dot(-toO, MeanDirV), 0.0, 1.0);
-            float lobe = pow(towards, 6.0);
-            float sigA = 0.010 + 0.05 * lobe;
-            float glare = exp(-0.5 * ang * ang / (sigA * sigA)) * (0.35 + 6.0 * lobe);
+            float lobe = pow(towards, 8.0);
+            // Point net de quelques pixels vu de cote, aureole d'un degre ou deux dans l'axe.
+            float sigA = max(0.003, PixelAngle * 2.0) + 0.02 * lobe;
+            float glare = exp(-0.5 * ang * ang / (sigA * sigA)) * (0.25 + 5.0 * lobe);
             glare *= depthFade(ot, sceneT) * Intensity * HazeDensity;
             vec3 tint = vec3(0.0);
             float wsum = 0.0;
