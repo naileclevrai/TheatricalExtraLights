@@ -85,7 +85,7 @@ float hazeAt(vec3 wp, float contrast) {
         return 0.0;
     }
     vec3 wind = vec3(Time * 0.015, Time * 0.007, Time * 0.011);
-    vec3 p = wp * 0.55 + wind;
+    vec3 p = wp * 0.32 + wind;
     float sum = 0.0;
     float amp = 0.55;
     float norm = 0.0;
@@ -155,7 +155,7 @@ float depthFade(float t, float sceneT) {
 // d'un pixel pour l'antialiasing garde l'energie constante : le pic baisse d'autant.
 
 vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float weight,
-                 float path, float sceneT) {
+                 float path, float sceneT, bool hit) {
     if (weight <= 0.0) {
         return vec3(0.0);
     }
@@ -183,8 +183,10 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
 
     float sigmaPhys = BeamRadius + s * Divergence;
     float sigma = max(sigmaPhys, PixelAngle * t * 0.9);
-    // Halo de diffusion : lobe large et faible autour du trait, 12 % de l'energie.
-    float glowSigma = sigma * 9.0;
+    // Halo de diffusion : lobe faible autour du trait, 12 % de l'energie. Sa largeur suit
+    // le faisceau physique, pas l'empreinte du pixel : de loin il reste de quelques pixels,
+    // sinon les faisceaux qui se croisent a la lentille s'additionnent en une boule.
+    float glowSigma = max(sigmaPhys * 5.0, PixelAngle * t * 2.2);
     if (dist > 3.2 * glowSigma) {
         return vec3(0.0);
     }
@@ -211,9 +213,14 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
     vec3 toLight = normalize(O - pb);
     float phase = phaseFn(rd, toLight);
     float camFade = smoothstep(0.0, 0.8, t);
+    // Tout pres de la sortie les faisceaux d'un motif se superposent : court fondu pour
+    // ne pas empiler leur energie en un point brulant.
+    float apertureFade = smoothstep(0.05, 0.6, s);
+    // Un faisceau qui ne touche rien se perd dans l'air au lieu de se couper net.
+    float endFade = hit ? 1.0 : 1.0 - smoothstep(len * 0.55, len, s);
 
-    return color * (weight * Intensity * phase * haze * ext * fade * camFade
-            * lineIntegral * scanMod(path));
+    return color * (weight * Intensity * phase * haze * ext * fade * camFade * apertureFade
+            * endFade * lineIntegral * scanMod(path));
 }
 
 // ── Nappe : secteur balaye entre deux directions ─────────────────────────────
@@ -222,7 +229,7 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
 
 vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
                   vec3 dirW0, vec3 dirW1, float span, vec3 color, float weight,
-                  float path0, float path1, float sceneT) {
+                  float path0, float path1, float sceneT, bool hit0, bool hit1) {
     if (weight <= 0.0 || span < 1.0e-4) {
         return vec3(0.0);
     }
@@ -268,6 +275,9 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     float frac = clamp(acos(clamp(dot(dir0, qn), -1.0, 1.0)) / span, 0.0, 1.0);
     float lenAt = mix(len0, len1, frac);
     float endMask = 1.0 - smoothstep(lenAt - 0.35, lenAt + 0.05, r);
+    // Bord libre : la nappe s'eteint progressivement la ou aucun des deux rayons ne touche.
+    float openness = mix(hit0 ? 0.0 : 1.0, hit1 ? 0.0 : 1.0, frac);
+    endMask *= mix(1.0, 1.0 - smoothstep(lenAt * 0.55, lenAt, r), openness);
     if (endMask < 0.002) {
         return vec3(0.0);
     }
@@ -294,9 +304,10 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     float ext = exp(-Extinction * HazeDensity * (r + 0.7 * t));
     float phase = phaseFn(rd, -qn);
     float camFade = smoothstep(0.0, 0.8, t);
+    float apertureFade = smoothstep(0.1, 0.8, r);
     float path = mix(path0, path1, frac);
 
-    return color * (weight * Intensity * phase * haze * ext * fade * camFade
+    return color * (weight * Intensity * phase * haze * ext * fade * camFade * apertureFade
             * mask * endMask * sheetIntegral * scanMod(path));
 }
 
@@ -369,14 +380,17 @@ void main() {
         int flags = int(f.w + 0.5);
 
         if ((flags & FLAG_BEAM0) != 0) {
-            accum += beamScatter(rd, a.xyz, a.w, f.xyz, c.rgb, w.x, w.z, sceneT);
+            accum += beamScatter(rd, a.xyz, a.w, f.xyz, c.rgb, w.x, w.z, sceneT,
+                    (flags & FLAG_HIT0) != 0);
         }
         if ((flags & FLAG_BEAM1) != 0) {
-            accum += beamScatter(rd, b.xyz, b.w, g.xyz, c.rgb, w.y, w.w, sceneT);
+            accum += beamScatter(rd, b.xyz, b.w, g.xyz, c.rgb, w.y, w.w, sceneT,
+                    (flags & FLAG_HIT1) != 0);
         }
         if ((flags & FLAG_SHEET) != 0) {
             accum += sheetScatter(rd, a.xyz, b.xyz, a.w, b.w, f.xyz, g.xyz, g.w,
-                    c.rgb, c.w, w.z, w.w, sceneT);
+                    c.rgb, c.w, w.z, w.w, sceneT,
+                    (flags & FLAG_HIT0) != 0, (flags & FLAG_HIT1) != 0);
         }
 
         if (ImpactEnabled > 0.5 && hasSurface) {
