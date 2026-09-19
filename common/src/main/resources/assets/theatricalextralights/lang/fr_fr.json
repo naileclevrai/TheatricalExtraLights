@@ -365,5 +365,7 @@
   "tel.settings.laser.brightness": "Luminosité laser",
   "tel.settings.laser.radius": "Rayon du faisceau",
   "tel.settings.laser.note": "Sans brume, seuls les impacts restent visibles, comme en vrai.",
+  "tel.settings.flamebloom": "Bloom des flammes",
+  "tel.settings.flamebloomstrength": "Bloom",
   "tel.command.config.opened": "Réglages Extra Lights ouverts."
 }

@@ -50,6 +50,8 @@ Edit the file while the game is closed, or use the settings screen, which writes
 | `fireworkRenderDistance` | `2048.0` | Ceiling for the pyro render distance. |
 | `fireworkDynamicRenderDistance` | `true` | Follow the client render distance (or server view distance), capped by the value above. |
 | `fireworkDynamicLightEnabled` | `true` | Dynamic light on bursts. |
+| `flameBloom` | `true` | | Glow around flame thrower jets, rendered as a post-process without any shader pack. Off automatically under Iris or Shimmer. |
+| `flameBloomStrength` | `1.0` | 0.1 to 3 | Intensity of that glow. |
 | `fireworkSmokeEnabled` | `true` | Smoke trails on comets. |
 | `fireworkSmokeBudgetPerTick` | `24` | Smoke particles per tick. |
 | `fireworkSmokeSpawnInterval` | `3` | Ticks between smoke spawns, minimum 1. |

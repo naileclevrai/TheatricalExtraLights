@@ -398,6 +398,8 @@
   "tel.settings.laser.brightness": "Laser brightness",
   "tel.settings.laser.radius": "Beam radius",
   "tel.settings.laser.note": "Without haze only the impacts stay visible, as in real life.",
+  "tel.settings.flamebloom": "Flame bloom",
+  "tel.settings.flamebloomstrength": "Bloom",
   "tel.command.config.opened": "Extra Lights settings opened.",
   "screen.theatricalextralights.mount.reset": "Reset",
 

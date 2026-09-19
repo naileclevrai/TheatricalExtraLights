@@ -73,6 +73,9 @@ public class TheatricalExtraLightsConfig {
     private Boolean fireworkDynamicRenderDistance = true;
     private Boolean fireworkDynamicLightEnabled = true;
     private Boolean fireworkSmokeEnabled = true;
+    /** Bloom des flammes (post-process sans shaderpack). */
+    private Boolean flameBloom = true;
+    private Float flameBloomStrength = 1.0f;
     private Integer fireworkSmokeBudgetPerTick = 24;
     private Integer fireworkSmokeSpawnInterval = 3;
 
@@ -335,6 +338,16 @@ public class TheatricalExtraLightsConfig {
     public static double getFireworkRenderDistance() { return INSTANCE.fireworkRenderDistance != null ? INSTANCE.fireworkRenderDistance : 2048.0; }
     public static boolean useFireworkDynamicRenderDistance() { return INSTANCE.fireworkDynamicRenderDistance == null || INSTANCE.fireworkDynamicRenderDistance; }
     public static boolean isFireworkDynamicLightEnabled() { return INSTANCE.fireworkDynamicLightEnabled == null || INSTANCE.fireworkDynamicLightEnabled; }
+    public static boolean isFlameBloomEnabled() { return INSTANCE.flameBloom == null || INSTANCE.flameBloom; }
+    public static void setFlameBloom(boolean value) { INSTANCE.flameBloom = value; save(); }
+    public static float getFlameBloomStrength() {
+        float v = INSTANCE.flameBloomStrength != null ? INSTANCE.flameBloomStrength : 1.0f;
+        return Math.max(0.1f, Math.min(3.0f, v));
+    }
+    public static void setFlameBloomStrength(float value) {
+        INSTANCE.flameBloomStrength = Math.max(0.1f, Math.min(3.0f, value));
+        save();
+    }
     public static boolean isFireworkSmokeEnabled() { return INSTANCE.fireworkSmokeEnabled == null || INSTANCE.fireworkSmokeEnabled; }
     public static int getFireworkSmokeBudgetPerTick() { return INSTANCE.fireworkSmokeBudgetPerTick != null ? INSTANCE.fireworkSmokeBudgetPerTick : 24; }
     public static int getFireworkSmokeSpawnInterval() { return Math.max(1, INSTANCE.fireworkSmokeSpawnInterval != null ? INSTANCE.fireworkSmokeSpawnInterval : 3); }
