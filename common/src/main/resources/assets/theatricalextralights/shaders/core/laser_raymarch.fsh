@@ -41,7 +41,7 @@ out vec4 fragColor;
 
 const float PI = 3.14159265;
 const float INV_SQRT_2PI = 0.39894228;
-const float SHEET_GAIN = 90.0;
+const float SHEET_GAIN = 55.0;
 const float IMPACT_GAIN = 0.55;
 const float IMPACT_LINE_GAIN = 6.0;
 
@@ -96,8 +96,9 @@ float hazeAt(vec3 wp) {
         amp *= 0.5;
     }
     float n = norm > 0.0 ? sum / norm : 0.5;
-    // Jamais totalement vide : une salle enfumee garde un voile de fond.
-    float billow = 0.35 + 1.3 * n * n;
+    // Jamais totalement vide : une salle enfumee garde un voile de fond. Contraste modere :
+    // des volutes trop marquees se lisent comme des taches blanches dans une nappe.
+    float billow = 0.6 + 0.8 * n;
     return HazeDensity * billow;
 }
 
@@ -366,10 +367,11 @@ void main() {
         discard;
     }
 
-    // Compression douce qui garde la teinte, puis saturation vers le blanc du coeur : un
-    // faisceau vert vif se lit blanc-vert au centre et vert franc sur les bords.
+    // Compression douce qui garde la teinte. La derive vers le blanc est reservee aux coeurs
+    // vraiment brulants (faisceau vu de face, impact) et reste partielle, pour que les nappes
+    // et la brume gardent la couleur du laser.
     vec3 mapped = accum * ((1.0 - exp(-lum)) / lum);
-    float hot = smoothstep(1.6, 6.0, lum) * 0.9;
+    float hot = smoothstep(4.0, 14.0, lum) * 0.65;
     mapped = mix(mapped, vec3(1.0), hot);
 
     fragColor = vec4(max(mapped, 0.0), 1.0);
