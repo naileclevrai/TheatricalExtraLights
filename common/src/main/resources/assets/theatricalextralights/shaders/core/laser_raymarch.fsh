@@ -105,13 +105,16 @@ float hazeAt(vec3 wp, float contrast) {
 
 // Poussieres en suspension qui traversent le faisceau : points brillants brefs, fins, qui
 // derivent avec la brume. C'est ce scintillement qui trahit un faisceau reel.
-float motes(vec3 wp) {
+float motes(vec3 wp, float t) {
     if (NoiseOctaves < 2) return 0.0;
     vec3 drift = vec3(Time * 0.11, -Time * 0.05, Time * 0.08);
-    float a = vnoise(wp * 9.0 + drift);
-    float b = vnoise(wp * 23.0 - drift * 1.7 + 4.2);
+    // Grains fins (quelques millimetres) : de pres ils restent des points, jamais des taches.
+    float a = vnoise(wp * 55.0 + drift * 4.0);
+    float b = vnoise(wp * 140.0 - drift * 7.0 + 4.2);
     float m = a * b;
-    return pow(max(m - 0.30, 0.0) * 3.2, 5.0);
+    // A moins de deux metres un grain couvrirait plusieurs pixels : on le fond.
+    float nearFade = smoothstep(1.5, 5.0, t);
+    return pow(max(m - 0.34, 0.0) * 3.4, 4.0) * nearFade;
 }
 
 float henyeyGreenstein(float cosTheta, float g) {
@@ -195,7 +198,8 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
         return vec3(0.0);
     }
 
-    float sinTheta = max(sqrt(max(denom, 0.0)), 0.07);
+    // Vu dans l'axe, l'integrale explose : plafond a ~9 degres pour garder de la couleur.
+    float sinTheta = max(sqrt(max(denom, 0.0)), 0.15);
     float core = exp(-0.5 * dist * dist / (sigma * sigma)) / sigma;
     float glow = exp(-0.5 * dist * dist / (glowSigma * glowSigma)) / glowSigma;
     float lineIntegral = INV_SQRT_2PI * (0.88 * core + 0.12 * glow) / sinTheta;
@@ -206,7 +210,7 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
         return vec3(0.0);
     }
     // Les poussieres ne brillent que dans le coeur du faisceau.
-    haze += motes(wp) * 6.0 * exp(-0.5 * dist * dist / (sigma * sigma));
+    haze += motes(wp, t) * 2.5 * exp(-0.5 * dist * dist / (sigma * sigma));
     // Extinction le long du faisceau, puis entre le point et l'oeil : un faisceau lointain
     // est voile par la brume qui le separe de la camera, un faisceau proche reste net.
     float ext = exp(-Extinction * HazeDensity * (s + 0.7 * t));
@@ -215,7 +219,7 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
     float camFade = smoothstep(0.0, 0.8, t);
     // Tout pres de la sortie les faisceaux d'un motif se superposent : court fondu pour
     // ne pas empiler leur energie en un point brulant.
-    float apertureFade = smoothstep(0.05, 0.6, s);
+    float apertureFade = smoothstep(0.05, 1.2, s);
     // Un faisceau qui ne touche rien se perd dans l'air au lieu de se couper net.
     float endFade = hit ? 1.0 : 1.0 - smoothstep(len * 0.55, len, s);
 
@@ -422,7 +426,7 @@ void main() {
     // vraiment brulants (faisceau vu de face, impact) et reste partielle, pour que les nappes
     // et la brume gardent la couleur du laser.
     vec3 mapped = accum * ((1.0 - exp(-lum)) / lum);
-    float hot = smoothstep(4.0, 14.0, lum) * 0.65;
+    float hot = smoothstep(6.0, 24.0, lum) * 0.45;
     mapped = mix(mapped, vec3(1.0), hot);
 
     fragColor = vec4(max(mapped, 0.0), 1.0);
