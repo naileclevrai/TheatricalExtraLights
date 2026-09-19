@@ -33,6 +33,12 @@ Edit the file while the game is closed, or use the settings screen, which writes
 |---|---|---|
 | `laserBeamLength` | `400.0` | Maximum laser beam length in blocks, minimum 20. |
 | `laserPassThroughBlocks` | `[]` | Block ids lasers go through instead of stopping on, for example `"minecraft:glass"`. Theatrical and Extra Lights blocks are always pass-through. |
+| `laserRealistic` | `true` | Realistic laser engine (thin beams, sheets, impacts, haze). `false` draws the old flat ribbons. Automatically off under an Iris shader pack. |
+| `laserHaze` | `0.7` | Haze density seen by lasers, 0 to 1. At 0 only the impacts are visible. |
+| `laserBrightness` | `1.0` | Overall laser gain, 0.05 to 4. |
+| `laserBeamRadiusCm` | `1.0` | Beam radius at the lens in centimetres, 0.2 to 6. |
+| `laserImpacts` | `true` | Hot spot and line where beams hit blocks. |
+| `laserScanFlicker` | `true` | Bright scan head running along the pattern when the Persistence channel is low. |
 | `rgbBarBeamLength` | `9.0` | Reach of the RGB bar glow, minimum 1. |
 
 ## Pyro
@@ -64,6 +70,8 @@ Edit the file while the game is closed, or use the settings screen, which writes
   "beamShadows": true,
   "volumetricBeamDistance": 64.0,
   "laserBeamLength": 400.0,
+  "laserRealistic": true,
+  "laserHaze": 0.7,
   "laserPassThroughBlocks": ["minecraft:glass", "minecraft:black_concrete"]
 }
 ```

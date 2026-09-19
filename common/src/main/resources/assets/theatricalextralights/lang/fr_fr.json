@@ -357,5 +357,13 @@
   "tel.settings.spotmax": "Rayon max de la tache",
   "tel.settings.beam.note": "Densité, alpha max et tranches ne valent que pour le moteur Tranches.",
   "tel.settings.spot.note": "Tache dimensionnée sur l'angle du cône x la distance éclairée.",
+  "tel.settings.tab.laser": "Laser",
+  "tel.settings.laser.realistic": "Laser réaliste",
+  "tel.settings.laser.impacts": "Impacts",
+  "tel.settings.laser.flicker": "Tête de balayage",
+  "tel.settings.laser.haze": "Brume",
+  "tel.settings.laser.brightness": "Luminosité laser",
+  "tel.settings.laser.radius": "Rayon du faisceau",
+  "tel.settings.laser.note": "Sans brume, seuls les impacts restent visibles, comme en vrai.",
   "tel.command.config.opened": "Réglages Extra Lights ouverts."
 }

@@ -47,6 +47,17 @@ public class TheatricalExtraLightsConfig {
     /** Ombres portees des blocs et entites dans le faisceau et sur la tache projetee. */
     private Boolean beamShadows = true;
 
+    /** Laser realiste : faisceaux fins et nappes integres dans la brume, impacts sur les surfaces. */
+    private Boolean laserRealistic = true;
+    /** Densite de brume vue par les lasers, 0 = air limpide (seuls les impacts restent). */
+    private Float laserHaze = 0.7f;
+    private Float laserBrightness = 1.0f;
+    /** Rayon du faisceau a la sortie, centimetres. */
+    private Float laserBeamRadiusCm = 1.0f;
+    private Boolean laserImpacts = true;
+    /** Tete de balayage visible quand la persistance DMX est basse. */
+    private Boolean laserScanFlicker = true;
+
     /**
      * Dimensionne la tache lumineuse des lyres sur la section du cone a la distance eclairee,
      * au lieu du rayon derive du seul focus par Theatrical, qui ignore la distance.
@@ -254,6 +265,65 @@ public class TheatricalExtraLightsConfig {
         int value = INSTANCE.raymarchMaxBeamsPerFrame != null ? INSTANCE.raymarchMaxBeamsPerFrame : 128;
         return Math.max(1, Math.min(512, value));
     }
+    /* ---- Laser realiste ---- */
+
+    public static boolean isLaserRealistic() {
+        return INSTANCE.laserRealistic == null || INSTANCE.laserRealistic;
+    }
+
+    public static void setLaserRealistic(boolean value) {
+        INSTANCE.laserRealistic = value;
+        save();
+    }
+
+    public static float getLaserHaze() {
+        float v = INSTANCE.laserHaze != null ? INSTANCE.laserHaze : 0.7f;
+        return Math.max(0.0f, Math.min(1.0f, v));
+    }
+
+    public static void setLaserHaze(float value) {
+        INSTANCE.laserHaze = Math.max(0.0f, Math.min(1.0f, value));
+        save();
+    }
+
+    public static float getLaserBrightness() {
+        float v = INSTANCE.laserBrightness != null ? INSTANCE.laserBrightness : 1.0f;
+        return Math.max(0.05f, Math.min(4.0f, v));
+    }
+
+    public static void setLaserBrightness(float value) {
+        INSTANCE.laserBrightness = Math.max(0.05f, Math.min(4.0f, value));
+        save();
+    }
+
+    public static float getLaserBeamRadiusCm() {
+        float v = INSTANCE.laserBeamRadiusCm != null ? INSTANCE.laserBeamRadiusCm : 1.0f;
+        return Math.max(0.2f, Math.min(6.0f, v));
+    }
+
+    public static void setLaserBeamRadiusCm(float value) {
+        INSTANCE.laserBeamRadiusCm = Math.max(0.2f, Math.min(6.0f, value));
+        save();
+    }
+
+    public static boolean isLaserImpactsEnabled() {
+        return INSTANCE.laserImpacts == null || INSTANCE.laserImpacts;
+    }
+
+    public static void setLaserImpacts(boolean value) {
+        INSTANCE.laserImpacts = value;
+        save();
+    }
+
+    public static boolean isLaserScanFlickerEnabled() {
+        return INSTANCE.laserScanFlicker == null || INSTANCE.laserScanFlicker;
+    }
+
+    public static void setLaserScanFlicker(boolean value) {
+        INSTANCE.laserScanFlicker = value;
+        save();
+    }
+
     public static float getLaserBeamLength() { return INSTANCE.laserBeamLength; }
     public static float getRgbBarBeamLength() { return INSTANCE.rgbBarBeamLength; }
     public static boolean shouldRenderLens() { return INSTANCE.renderLens; }
