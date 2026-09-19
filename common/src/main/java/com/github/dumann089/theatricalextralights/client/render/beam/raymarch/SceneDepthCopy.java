@@ -3,6 +3,10 @@ package com.github.dumann089.theatricalextralights.client.render.beam.raymarch;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.world.inventory.InventoryMenu;
 
 import java.lang.reflect.Method;
 
@@ -20,6 +24,28 @@ public final class SceneDepthCopy {
 
     public static void beginFrame() {
         capturedThisFrame = false;
+    }
+
+    /**
+     * Vide les tampons de geometrie opaque des block entities (corps des projecteurs, modeles)
+     * puis copie la profondeur, sans vider les render types custom : les quads de faisceau 2D
+     * (TheatricalRenderTypes.BEAM) ecrivent la profondeur et, s'ils sont copies, ils trouent
+     * les faisceaux raymarch et les lasers qui passent derriere eux.
+     */
+    public static void flushOpaqueAndCapture(MultiBufferSource.BufferSource buffers) {
+        if (capturedThisFrame) return;
+        buffers.endBatch(RenderType.solid());
+        buffers.endBatch(RenderType.cutoutMipped());
+        buffers.endBatch(RenderType.cutout());
+        buffers.endBatch(RenderType.translucent());
+        buffers.endBatch(Sheets.solidBlockSheet());
+        buffers.endBatch(Sheets.cutoutBlockSheet());
+        buffers.endBatch(Sheets.translucentCullBlockSheet());
+        buffers.endBatch(RenderType.entitySolid(InventoryMenu.BLOCK_ATLAS));
+        buffers.endBatch(RenderType.entityCutout(InventoryMenu.BLOCK_ATLAS));
+        buffers.endBatch(RenderType.entityCutoutNoCull(InventoryMenu.BLOCK_ATLAS));
+        buffers.endBatch(RenderType.entityTranslucentCull(InventoryMenu.BLOCK_ATLAS));
+        capture();
     }
 
     public static void capture() {

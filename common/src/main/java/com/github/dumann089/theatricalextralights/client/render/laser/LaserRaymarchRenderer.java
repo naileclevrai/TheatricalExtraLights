@@ -96,8 +96,8 @@ public final class LaserRaymarchRenderer extends LazyRenderers.LazyRenderer {
             if (activeCount == 0) {
                 return;
             }
+            SceneDepthCopy.flushOpaqueAndCapture(bufferSource);
             bufferSource.endBatch();
-            SceneDepthCopy.capture();
             ShaderInstance shader = ModShaders.laserRaymarchShader;
             if (!SceneDepthCopy.hasDepth() || shader == null) {
                 return;
