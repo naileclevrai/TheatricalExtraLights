@@ -51,8 +51,6 @@ public final class LaserFigure {
     public float scanTrail;
     /** Striations radiales des nappes, 0 (scan rapide) .. 1 (scan lent). */
     public float striation;
-    /** Direction moyenne des faisceaux, monde, pour l'eblouissement de la lentille. */
-    public Vec3 meanDir = new Vec3(0, 0, 1);
 
     public void reset() {
         count = 0;

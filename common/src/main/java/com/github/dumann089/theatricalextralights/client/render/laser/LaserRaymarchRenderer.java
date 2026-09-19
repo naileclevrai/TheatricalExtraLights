@@ -172,9 +172,6 @@ public final class LaserRaymarchRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("ScanTrail").set(fig.scanTrail);
                 shader.safeGetUniform("ImpactEnabled").set(impacts);
                 shader.safeGetUniform("Striation").set(fig.striation);
-                shader.safeGetUniform("MeanDirW").set((float) fig.meanDir.x, (float) fig.meanDir.y, (float) fig.meanDir.z);
-                transformDir(view, (float) fig.meanDir.x, (float) fig.meanDir.y, (float) fig.meanDir.z, tmp);
-                shader.safeGetUniform("MeanDirV").set(tmp.x, tmp.y, tmp.z);
                 shader.safeGetUniform("NoiseOctaves").set(octaves);
                 shader.safeGetUniform("Time").set(time);
                 shader.safeGetUniform("Ambient").set(daylight);

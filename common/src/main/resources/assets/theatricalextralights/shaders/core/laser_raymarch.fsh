@@ -33,8 +33,6 @@ uniform float TotalSpan;     // angle total balaye par les nappes, radians
 uniform float ScanHead;      // position de la tete de balayage sur la figure, 0..1
 uniform float ScanTrail;     // amplitude de la surbrillance derriere la tete
 uniform float ImpactEnabled;
-uniform vec3 MeanDirW;       // direction moyenne des faisceaux, monde (eblouissement de la lentille)
-uniform vec3 MeanDirV;       // idem, repere vue
 uniform float Striation;     // striations radiales des nappes, 0 (scan rapide) .. 1
 uniform int NoiseOctaves;
 uniform float Time;
@@ -126,7 +124,8 @@ float henyeyGreenstein(float cosTheta, float g) {
 // rend un faisceau eblouissant quand on regarde vers la source et discret de dos.
 float phaseFn(vec3 rd, vec3 toLight) {
     float cosTheta = dot(-rd, toLight);
-    float g = clamp(Anisotropy, 0.0, 0.92);
+    // La brume de scene diffuse surtout vers l'avant : plancher a 0.6 quel que soit le reglage.
+    float g = clamp(max(Anisotropy, 0.6), 0.0, 0.92);
     return 0.18 + henyeyGreenstein(cosTheta, g);
 }
 
@@ -206,7 +205,9 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
     }
     // Les poussieres ne brillent que dans le coeur du faisceau.
     haze += motes(wp) * 6.0 * exp(-0.5 * dist * dist / (sigma * sigma));
-    float ext = exp(-Extinction * HazeDensity * s);
+    // Extinction le long du faisceau, puis entre le point et l'oeil : un faisceau lointain
+    // est voile par la brume qui le separe de la camera, un faisceau proche reste net.
+    float ext = exp(-Extinction * HazeDensity * (s + 0.7 * t));
     vec3 toLight = normalize(O - pb);
     float phase = phaseFn(rd, toLight);
     float camFade = smoothstep(0.0, 0.8, t);
@@ -276,7 +277,7 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     }
 
     float cosPhi = max(abs(dn), 0.06);
-    float sheetIntegral = SHEET_GAIN / (max(r, 0.3) * TotalSpan * cosPhi);
+    float sheetIntegral = SHEET_GAIN / (max(r, 0.8) * TotalSpan * cosPhi);
 
     vec3 dirW = normalize(mix(dirW0, dirW1, frac));
     float haze = hazeAt(OriginW + dirW * r, 0.55);
@@ -290,7 +291,7 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
         float stri = 0.5 + 0.5 * sin(angle * 260.0 + path0 * 40.0);
         haze *= 1.0 + Striation * 0.55 * (stri - 0.5);
     }
-    float ext = exp(-Extinction * HazeDensity * r);
+    float ext = exp(-Extinction * HazeDensity * (r + 0.7 * t));
     float phase = phaseFn(rd, -qn);
     float camFade = smoothstep(0.0, 0.8, t);
     float path = mix(path0, path1, frac);
@@ -392,32 +393,6 @@ void main() {
             if ((flags & FLAG_SHEET) != 0 && hit0 && hit1) {
                 accum += impactLine(scenePos, sceneT, h0, h1, a.w, b.w, c.rgb, c.w);
             }
-        }
-    }
-
-    // Eblouissement de la sortie de lentille : la brume juste devant l'ouverture renvoie
-    // toute la puissance vers l'oeil quand on regarde dans l'axe des faisceaux.
-    {
-        float ot = length(OriginV);
-        if (ot > 0.2 && HazeDensity > 0.0001) {
-            vec3 toO = OriginV / ot;
-            float ang = acos(clamp(dot(rd, toO), -1.0, 1.0));
-            float towards = clamp(dot(-toO, MeanDirV), 0.0, 1.0);
-            float lobe = pow(towards, 8.0);
-            // Point net de quelques pixels vu de cote, aureole d'un degre ou deux dans l'axe.
-            float sigA = max(0.003, PixelAngle * 2.0) + 0.02 * lobe;
-            float glare = exp(-0.5 * ang * ang / (sigA * sigA)) * (0.25 + 5.0 * lobe);
-            glare *= depthFade(ot, sceneT) * Intensity * HazeDensity;
-            vec3 tint = vec3(0.0);
-            float wsum = 0.0;
-            for (int i = 0; i < 8; i++) {
-                if (i >= SegCount) break;
-                vec4 c = texelFetch(Sampler2, ivec2(4, i), 0);
-                tint += c.rgb;
-                wsum += 1.0;
-            }
-            tint = wsum > 0.0 ? tint / wsum : vec3(1.0);
-            accum += tint * glare;
         }
     }
 
