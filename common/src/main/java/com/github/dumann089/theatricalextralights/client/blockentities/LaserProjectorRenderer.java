@@ -13,7 +13,9 @@ import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
 import dev.imabad.theatrical.blocks.light.BaseLightBlock;
 import dev.imabad.theatrical.client.LazyRenderers;
-import dev.imabad.theatrical.client.TheatricalRenderTypes;
+import com.github.dumann089.theatricalextralights.client.ExtraLightsRenderTypes;
+import com.github.dumann089.theatricalextralights.client.render.laser.LaserFigure;
+import com.github.dumann089.theatricalextralights.client.render.laser.LaserRaymarchRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -37,9 +39,14 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * Ether Dream scan picture as a show laser: camera-facing billboard shafts
- * (no stacked discs, no crossed planes — those look like ribs when you look
- * up the beam), soft persistence fans, the ILDA drawing in mid-air, impacts.
+ * Ether Dream scan picture as a show laser. Two render paths, same as the DMX laser:
+ * <ul>
+ *   <li>realistic: the scanned figure is handed to {@link LaserRaymarchRenderer}, which draws
+ *   beams, sheets and impacts in the haze against the scene depth buffer;</li>
+ *   <li>legacy: camera-facing billboard shafts, soft persistence fans, the ILDA drawing in
+ *   mid-air and impacts, in the depth-safe BEAM render type, when the shader is unavailable
+ *   (Iris active, engine disabled in the settings).</li>
+ * </ul>
  *
  * <p>Brightness follows {@link LaserSegment#persistence()}.
  */
@@ -116,6 +123,11 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
             return;
         }
 
+        if (LaserRaymarchRenderer.isAvailable()) {
+            submitRealistic(blockEntity, geo, facing, partialTicks, isFlipped, blockstate, isHanging);
+            return;
+        }
+
         LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
             @Override
             public void render(MultiBufferSource.BufferSource bufferSource, PoseStack renderPose, Camera camera, float partialTick) {
@@ -128,6 +140,82 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
                 return blockEntity.getBlockPos().getCenter();
             }
         });
+    }
+
+    // ── Realistic path ────────────────────────────────────────────────────
+
+    /**
+     * Converts the lens-space geometry to world space through the same transform chain as the
+     * head model (mount, hang, pan, tilt) and fills a {@link LaserFigure}. Every visible DAC
+     * segment becomes a sheet between its two directions; isolated points and the ends of
+     * open strokes keep a beam. Received point age already models the scan persistence, so the
+     * figure has no scan head of its own.
+     */
+    private void submitRealistic(LaserProjectorBlockEntity be, ScanGeometry geo, Direction facing,
+                                 float partialTicks, boolean isFlipped, BlockState blockstate, boolean isHanging) {
+        LaserFigure fig = LaserRaymarchRenderer.begin();
+        if (fig == null) {
+            return;
+        }
+        PoseStack local = new PoseStack();
+        preparePoseStack(be, local, facing, partialTicks, isFlipped, blockstate, isHanging);
+        Matrix4f m = local.last().pose();
+
+        Vector4f o = new Vector4f((float) geo.origin.x, (float) geo.origin.y, (float) geo.origin.z, 1f);
+        m.transform(o);
+        Vec3 originW = new Vec3(be.getBlockPos().getX() + o.x, be.getBlockPos().getY() + o.y, be.getBlockPos().getZ() + o.z);
+
+        int n = Math.min(geo.count, LaserFigure.MAX_SEGMENTS);
+        float share = (float) Math.pow(Math.max(1, n), -0.75);
+        double totalSpan = 0.0;
+        for (int i = 0; i < n; i++) {
+            if (geo.spanDeg[i] > 0.01f) {
+                totalSpan += Math.toRadians(geo.spanDeg[i]);
+            }
+        }
+        double cum = 0.0;
+        Vector4f d = new Vector4f();
+        for (int i = 0; i < n; i++) {
+            float bright = geo.brightness[i];
+            if (bright <= 0.002f) {
+                continue;
+            }
+            Vec3 d0 = worldDir(m, geo.dir0[i], d);
+            Vec3 d1 = worldDir(m, geo.dir1[i], d);
+            float spanRad = (float) Math.toRadians(geo.spanDeg[i]);
+            float p0 = totalSpan > 0.0 ? (float) (cum / totalSpan) : 0f;
+            boolean point = geo.segment[i].isPoint() || spanRad <= 1.0e-4f;
+            int color = geo.color[i];
+            if (point) {
+                int flags = LaserFigure.FLAG_BEAM0 | (geo.hit0[i] ? LaserFigure.FLAG_HIT0 : 0);
+                fig.add(d0, d0, geo.len0[i], geo.len0[i], 0f, color, 0f, bright * share, 0f, p0, p0, flags);
+                continue;
+            }
+            cum += spanRad;
+            float p1 = totalSpan > 0.0 ? (float) (cum / totalSpan) : 0f;
+            // Scanned drawing: the sheet carries the picture, a faint beam marks each vertex.
+            float beamW = bright * share * 0.35f;
+            int flags = LaserFigure.FLAG_SHEET | LaserFigure.FLAG_BEAM0 | LaserFigure.FLAG_BEAM1;
+            if (geo.hit0[i]) flags |= LaserFigure.FLAG_HIT0;
+            if (geo.hit1[i]) flags |= LaserFigure.FLAG_HIT1;
+            fig.add(d0, d1, geo.len0[i], geo.len1[i], spanRad, color, bright, beamW, beamW, p0, p1, flags);
+        }
+
+        fig.fixturePos = be.getBlockPos();
+        fig.origin = originW;
+        fig.intensity = 1.0f;
+        fig.totalSpan = totalSpan > 0.0 ? (float) totalSpan : 1f;
+        fig.divergence = 0.0012f;
+        fig.striation = 0.15f;
+        fig.scanHead = 0f;
+        fig.scanTrail = 0f;
+    }
+
+    private static Vec3 worldDir(Matrix4f m, Vec3 local, Vector4f tmp) {
+        tmp.set((float) local.x, (float) local.y, (float) local.z, 0f);
+        m.transform(tmp);
+        Vec3 dir = new Vec3(tmp.x, tmp.y, tmp.z);
+        return dir.lengthSqr() > 1.0e-10 ? dir.normalize() : new Vec3(0, 0, 1);
     }
 
     // ── Geometry (computed once per frame, shared by every layer) ─────────
@@ -187,7 +275,7 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
         preparePoseStack(blockEntity, poseStack, facing, partialTick, isFlipped, blockstate, isHanging);
 
         Vec3 cam = cameraInLocal(poseStack);
-        VertexConsumer beam = bufferSource.getBuffer(TheatricalRenderTypes.BEAM);
+        VertexConsumer beam = bufferSource.getBuffer(ExtraLightsRenderTypes.BEAM);
         Vec3 origin = geo.origin;
         float pictureDist = PICTURE_PLANE * blockEntity.getProjectionScale();
         float haze = TheatricalExtraLightsConfig.getLaserDacHazeRadius();

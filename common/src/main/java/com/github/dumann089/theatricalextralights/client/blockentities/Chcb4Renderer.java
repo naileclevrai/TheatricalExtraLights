@@ -10,7 +10,7 @@ import com.mojang.math.Axis;
 import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
 import dev.imabad.theatrical.client.LazyRenderers;
-import dev.imabad.theatrical.client.TheatricalRenderTypes;
+import com.github.dumann089.theatricalextralights.client.ExtraLightsRenderTypes;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -86,7 +86,7 @@ public class Chcb4Renderer extends ExtraLightsFixtureRenderer<Chcb4BlockEntity> 
                     lazyPose.pushPose();
                     lazyPose.translate(pos[0], pos[1], pos[2] + FACE_OFFSET);
 
-                    VertexConsumer glow = bufferSource.getBuffer(TheatricalRenderTypes.BEAM);
+                    VertexConsumer glow = bufferSource.getBuffer(ExtraLightsRenderTypes.BEAM);
                     renderDisc(glow, lazyPose, r, g, b, (int) (a * 0.55f), GLOW_SIZE);
 
                     VertexConsumer lens = bufferSource.getBuffer(LensRenderTypes.LENS);
