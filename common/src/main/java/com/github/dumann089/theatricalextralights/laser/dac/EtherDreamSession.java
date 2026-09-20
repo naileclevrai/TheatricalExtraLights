@@ -89,6 +89,7 @@ final class EtherDreamSession implements Runnable {
             case LaserProtocol.CMD_QUEUE_RATE, LaserProtocol.CMD_QUEUE_RATE_SPEC_TYPO -> {
                 readFully(in, header, 0, 4);
                 int rate = EtherDreamDevice.readU32(header, 0);
+                TheatricalExtraLights.LOGGER.info("[EtherDream] queue rate={}", rate);
                 reply(out, device.queueRate(rate), command);
             }
             case LaserProtocol.CMD_WRITE -> {

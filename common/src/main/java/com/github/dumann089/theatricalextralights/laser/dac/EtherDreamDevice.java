@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class EtherDreamDevice implements LaserDacDevice {
 
     public static final String DEFAULT_ID = "etherdream-0";
+    public static final int DEFAULT_POINT_RATE = 30_000;
 
     private final String id;
     /** Buffer size advertised to the host (what a real Ether Dream reports). */
@@ -173,6 +174,18 @@ public final class EtherDreamDevice implements LaserDacDevice {
             if (lightEngineState != LaserProtocol.LIGHT_READY) {
                 return LaserProtocol.NAK_INVALID;
             }
+            // Hosts may start with rate 0 / -1 and rely on a queued rate ('q') or on the
+            // rate already in force; a real DAC does not drop to 1 pps in that case.
+            if (newRate <= 0) {
+                if (!rateQueue.isEmpty()) {
+                    newRate = rateQueue.removeFirst();
+                } else if (pointRate > 0) {
+                    newRate = pointRate;
+                } else {
+                    newRate = DEFAULT_POINT_RATE;
+                }
+                TheatricalExtraLights.LOGGER.info("[EtherDream] begin without rate, using {} pps", newRate);
+            }
             pointRate = clampRate(newRate);
             playbackState = LaserProtocol.PLAYBACK_PLAYING;
             playbackFlags |= LaserProtocol.PLAY_FLAG_SHUTTER;
@@ -287,7 +300,7 @@ public final class EtherDreamDevice implements LaserDacDevice {
         head = 0;
         fullness = 0;
         pointCount = 0;
-        pointRate = 0;
+        // keep pointRate: the next begin may rely on it
         rateQueue.clear();
         historyWrite = 0;
         historySize = 0;
