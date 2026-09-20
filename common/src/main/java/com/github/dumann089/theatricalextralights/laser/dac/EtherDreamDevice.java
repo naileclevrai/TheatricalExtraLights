@@ -362,6 +362,8 @@ public final class EtherDreamDevice implements LaserDacDevice {
         }
     }
 
+    private long lastDebugNanos;
+
     private void publishFrame() {
         int blank = TheatricalExtraLightsConfig.getLaserDacBlankThreshold();
         int maxRays = TheatricalExtraLightsConfig.getLaserDacMaxRays();
@@ -388,10 +390,22 @@ public final class EtherDreamDevice implements LaserDacDevice {
         }
 
         int visibleCount = 0;
+        int maxR = 0, maxG = 0, maxB = 0, maxI = 0, minI = Integer.MAX_VALUE, minX = Short.MAX_VALUE, maxX = Short.MIN_VALUE, minY = Short.MAX_VALUE, maxY = Short.MIN_VALUE;
         for (LaserPoint point : snapshot) {
-            if (point != null && !point.isBlank(blank)) {
+            if (point == null) continue;
+            maxR = Math.max(maxR, point.r); maxG = Math.max(maxG, point.g); maxB = Math.max(maxB, point.b);
+            maxI = Math.max(maxI, point.i); minI = Math.min(minI, point.i);
+            minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
+            minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
+            if (!point.isBlank(blank)) {
                 visibleCount++;
             }
+        }
+        long nowDbg = System.nanoTime();
+        if (nowDbg - lastDebugNanos > 2_000_000_000L) {
+            lastDebugNanos = nowDbg;
+            TheatricalExtraLights.LOGGER.debug("[EtherDream] frame: window={} visible={} rate={} blankThreshold={} maxRGB={}/{}/{} i={}..{} x={}..{} y={}..{}",
+                    snapshot.length, visibleCount, rate, blank, maxR, maxG, maxB, minI, maxI, minX, maxX, minY, maxY);
         }
         if (visibleCount == 0) {
             frame.set(new LaserFrame(new LaserSegment[0], rate, count, System.nanoTime()));

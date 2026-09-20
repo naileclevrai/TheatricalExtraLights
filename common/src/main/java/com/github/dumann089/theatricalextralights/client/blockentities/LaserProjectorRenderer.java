@@ -67,6 +67,16 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
     private BakedModel cachedStaticModel;
 
     private final WeakHashMap<LaserProjectorBlockEntity, RaycastCache> raycastCaches = new WeakHashMap<>();
+    private long lastDebugNanos;
+
+    private void debug(String fmt, Object... args) {
+        long now = System.nanoTime();
+        if (now - lastDebugNanos < 2_000_000_000L) {
+            return;
+        }
+        lastDebugNanos = now;
+        com.github.dumann089.theatricalextralights.TheatricalExtraLights.LOGGER.debug("[LaserProjector] " + fmt, args);
+    }
 
     public LaserProjectorRenderer(BlockEntityRendererProvider.Context context) {
         super(context);
@@ -115,13 +125,20 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
                                  int packedLight, int packedOverlay) {
         LaserFrame frame = LaserDacHub.frame(blockEntity.getDacId());
         if (!frame.isFresh(System.nanoTime(), FRAME_MAX_AGE_NANOS)) {
+            debug("{} frame stale/empty: segments={} ageMs={}", blockEntity.getBlockPos(),
+                    frame.segments == null ? -1 : frame.segments.length,
+                    (System.nanoTime() - frame.publishedAtNanos) / 1_000_000L);
             return;
         }
 
         ScanGeometry geo = buildGeometry(blockEntity, frame, isHanging);
         if (geo.count == 0) {
+            debug("{} frame has {} segments but none visible", blockEntity.getBlockPos(), frame.segments.length);
             return;
         }
+        debug("{} segments={} visible={} realistic={} first: len0={} hit0={} bright={} color={} span={}",
+                blockEntity.getBlockPos(), frame.segments.length, geo.count, LaserRaymarchRenderer.isAvailable(),
+                geo.len0[0], geo.hit0[0], geo.brightness[0], Integer.toHexString(geo.color[0]), geo.spanDeg[0]);
 
         if (LaserRaymarchRenderer.isAvailable()) {
             submitRealistic(blockEntity, geo, facing, partialTicks, isFlipped, blockstate, isHanging);
@@ -155,6 +172,7 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
                                  float partialTicks, boolean isFlipped, BlockState blockstate, boolean isHanging) {
         LaserFigure fig = LaserRaymarchRenderer.begin();
         if (fig == null) {
+            debug("figure quota reached");
             return;
         }
         PoseStack local = new PoseStack();
@@ -203,6 +221,7 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
 
         fig.fixturePos = be.getBlockPos();
         fig.origin = originW;
+        debug("figure count={} origin={} totalSpan={}", fig.count, originW, totalSpan);
         fig.intensity = 1.0f;
         fig.totalSpan = totalSpan > 0.0 ? (float) totalSpan : 1f;
         fig.divergence = 0.0012f;
