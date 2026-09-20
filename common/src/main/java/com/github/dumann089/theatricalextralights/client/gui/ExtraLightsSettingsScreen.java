@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.client.gui;
 
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
+import com.github.dumann089.theatricalextralights.laser.dac.LaserDacRuntime;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
@@ -267,6 +268,16 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(toggle(contentLeft, y, half, "tel.settings.laser.flicker",
                 TheatricalExtraLightsConfig::isLaserScanFlickerEnabled,
                 TheatricalExtraLightsConfig::setLaserScanFlicker));
+        addRenderableWidget(toggle(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.laser.etherdream",
+                TheatricalExtraLightsConfig::isEtherDreamEnabled,
+                enabled -> {
+                    TheatricalExtraLightsConfig.setEtherDreamEnabled(enabled);
+                    if (enabled) {
+                        LaserDacRuntime.start();
+                    } else {
+                        LaserDacRuntime.stop();
+                    }
+                }));
         y += widgetHeight + rowGap;
 
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.haze",
