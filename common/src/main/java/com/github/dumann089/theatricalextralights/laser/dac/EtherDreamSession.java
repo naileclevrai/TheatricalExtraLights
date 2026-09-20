@@ -66,18 +66,24 @@ final class EtherDreamSession implements Runnable {
     private void handle(byte command, InputStream in, OutputStream out) throws IOException {
         if (LaserProtocol.isEstop(command) || isUnknown(command)) {
             if (isUnknown(command) && !LaserProtocol.isEstop(command)) {
-                TheatricalExtraLights.LOGGER.debug("[EtherDream] unknown command 0x{}, treating as e-stop",
-                        Integer.toHexString(command & 0xFF));
+                TheatricalExtraLights.LOGGER.info("[EtherDream] unknown command 0x{} ('{}'), treating as e-stop",
+                        Integer.toHexString(command & 0xFF), (char) command);
+            } else {
+                TheatricalExtraLights.LOGGER.info("[EtherDream] e-stop received (0x{})", Integer.toHexString(command & 0xFF));
             }
             device.emergencyStop();
             reply(out, LaserProtocol.ACK, command);
             return;
         }
         switch (command) {
-            case LaserProtocol.CMD_PREPARE -> reply(out, device.prepare(), command);
+            case LaserProtocol.CMD_PREPARE -> {
+                TheatricalExtraLights.LOGGER.info("[EtherDream] prepare");
+                reply(out, device.prepare(), command);
+            }
             case LaserProtocol.CMD_BEGIN -> {
                 readFully(in, header, 0, 6);
                 int rate = EtherDreamDevice.readU32(header, 2);
+                TheatricalExtraLights.LOGGER.info("[EtherDream] begin rate={} lowWater={}", rate, EtherDreamDevice.readU16(header, 0));
                 reply(out, device.begin(rate), command);
             }
             case LaserProtocol.CMD_QUEUE_RATE, LaserProtocol.CMD_QUEUE_RATE_SPEC_TYPO -> {
@@ -90,7 +96,10 @@ final class EtherDreamSession implements Runnable {
                 int npoints = EtherDreamDevice.readU16(header, 0);
                 reply(out, ingestPoints(in, npoints), command);
             }
-            case LaserProtocol.CMD_STOP -> reply(out, device.stopCommand(), command);
+            case LaserProtocol.CMD_STOP -> {
+                TheatricalExtraLights.LOGGER.info("[EtherDream] stop");
+                reply(out, device.stopCommand(), command);
+            }
             case LaserProtocol.CMD_CLEAR_ESTOP -> reply(out, device.clearEstop(), command);
             case LaserProtocol.CMD_PING -> reply(out, device.ping(), command);
             default -> {
@@ -131,7 +140,17 @@ final class EtherDreamSession implements Runnable {
         return new LaserPoint(control, x, y, r, g, b, i);
     }
 
+    private long lastNakLog;
+
     private void reply(OutputStream out, byte responseCode, byte command) throws IOException {
+        if (responseCode != LaserProtocol.ACK) {
+            long now = System.nanoTime();
+            if (now - lastNakLog > 1_000_000_000L) {
+                lastNakLog = now;
+                TheatricalExtraLights.LOGGER.info("[EtherDream] NAK '{}' to command '{}' (0x{})",
+                        (char) responseCode, (char) command, Integer.toHexString(command & 0xFF));
+            }
+        }
         device.writeResponse(response, responseCode, command);
         out.write(response);
         out.flush();
