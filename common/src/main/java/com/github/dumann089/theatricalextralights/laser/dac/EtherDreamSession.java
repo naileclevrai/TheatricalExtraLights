@@ -113,13 +113,8 @@ final class EtherDreamSession implements Runnable {
         if (npoints < 0) {
             npoints = 0;
         }
-        int capacity = TheatricalExtraLightsConfig.getEtherDreamBufferCapacity();
         if (npoints == 0) {
             return device.writePoints(new LaserPoint[0]);
-        }
-        if (npoints > capacity) {
-            discard(in, (long) npoints * LaserProtocol.POINT_BYTES);
-            return LaserProtocol.NAK_FULL;
         }
         LaserPoint[] points = new LaserPoint[npoints];
         for (int i = 0; i < npoints; i++) {

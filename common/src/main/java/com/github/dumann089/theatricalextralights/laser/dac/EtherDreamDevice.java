@@ -17,7 +17,14 @@ public final class EtherDreamDevice implements LaserDacDevice {
     public static final String DEFAULT_ID = "etherdream-0";
 
     private final String id;
+    /** Buffer size advertised to the host (what a real Ether Dream reports). */
     private final int capacity;
+    /**
+     * Real storage is larger than the advertised size. Hosts pace their writes on the
+     * fullness of our last reply, which is stale by the time the next burst arrives;
+     * MadMapper drops the connection on any NAK, so overshoot must be absorbed, not refused.
+     */
+    private final int storage;
     private final LaserPoint[] buffer;
     private int head;
     private int fullness;
@@ -52,7 +59,8 @@ public final class EtherDreamDevice implements LaserDacDevice {
     public EtherDreamDevice(String id, int capacity) {
         this.id = id;
         this.capacity = Math.max(256, capacity);
-        this.buffer = new LaserPoint[this.capacity];
+        this.storage = this.capacity * 4;
+        this.buffer = new LaserPoint[this.storage];
         // Persistence window at 100 kpps × 400 ms worst case: 40 k points.
         this.history = new LaserPoint[65536];
     }
@@ -77,7 +85,7 @@ public final class EtherDreamDevice implements LaserDacDevice {
         synchronized (lock) {
             return new LaserDacStatus(
                     listening, connected, lightEngineState, playbackState,
-                    fullness, capacity, pointRate, pointCount, remoteHost
+                    Math.min(fullness, capacity), capacity, pointRate, pointCount, remoteHost
             );
         }
     }
@@ -194,11 +202,16 @@ public final class EtherDreamDevice implements LaserDacDevice {
             if (points.length == 0) {
                 return LaserProtocol.ACK;
             }
-            if (points.length > capacity - fullness) {
-                return LaserProtocol.NAK_FULL;
+            int overflow = fullness + points.length - storage;
+            if (overflow > 0) {
+                // Absorb the overshoot: drop the oldest queued points rather than NAK the host.
+                int drop = Math.min(overflow, fullness);
+                head = (head + drop) % storage;
+                fullness -= drop;
             }
-            for (LaserPoint point : points) {
-                buffer[(head + fullness) % capacity] = point;
+            int from = Math.max(0, points.length - storage);
+            for (int i = from; i < points.length; i++) {
+                buffer[(head + fullness) % storage] = points[i];
                 fullness++;
             }
             return LaserProtocol.ACK;
@@ -322,7 +335,7 @@ public final class EtherDreamDevice implements LaserDacDevice {
                 }
                 LaserPoint point = buffer[head];
                 buffer[head] = null;
-                head = (head + 1) % capacity;
+                head = (head + 1) % storage;
                 fullness--;
                 if (point != null && point.changeRate() && !rateQueue.isEmpty()) {
                     pointRate = rateQueue.removeFirst();
@@ -462,7 +475,7 @@ public final class EtherDreamDevice implements LaserDacDevice {
         writeU16(out, offset + 4, lightEngineFlags);
         writeU16(out, offset + 6, playbackFlags);
         writeU16(out, offset + 8, sourceFlags);
-        writeU16(out, offset + 10, fullness);
+        writeU16(out, offset + 10, Math.min(fullness, capacity));
         writeU32(out, offset + 12, playbackState == LaserProtocol.PLAYBACK_IDLE ? 0 : pointRate);
         writeU32(out, offset + 16, playbackState == LaserProtocol.PLAYBACK_PLAYING ? (int) Math.min(pointCount, 0xFFFF_FFFFL) : 0);
     }
