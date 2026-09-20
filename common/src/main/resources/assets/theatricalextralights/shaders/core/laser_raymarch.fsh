@@ -258,6 +258,13 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
         return vec3(0.0);
     }
     vec3 qn = q / r;
+    // Jamais derriere la lentille : pour une nappe tres fine (deux directions presque
+    // confondues) les produits vectoriels des bords s'annulent aussi sur l'axe oppose et la
+    // nappe ressortirait en ligne droite a travers le projecteur.
+    vec3 mid = normalize(dir0 + dir1);
+    if (dot(qn, mid) <= 0.0) {
+        return vec3(0.0);
+    }
 
     // Bords du secteur adoucis sur l'empreinte d'un pixel ou l'epaisseur du faisceau.
     float s0 = dot(cross(dir0, qn), n);
@@ -268,7 +275,6 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     float mask = smoothstep(-edgeSoft, edgeSoft, s0) * smoothstep(-edgeSoft, edgeSoft, s1);
     // Halo au-dela des bords : la nappe ne se coupe pas au rasoir, elle s'eteint sur
     // quelques degres comme la diffusion autour d'un trait. Jamais vers l'arriere.
-    vec3 mid = normalize(dir0 + dir1);
     float forward = smoothstep(0.55, 0.85, dot(qn, mid));
     float glowSoft = min(edgeSoft * 10.0, 0.05);
     float glow = smoothstep(-glowSoft, glowSoft * 0.5, s0) * smoothstep(-glowSoft, glowSoft * 0.5, s1);

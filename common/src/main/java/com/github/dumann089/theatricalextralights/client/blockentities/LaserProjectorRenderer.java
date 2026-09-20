@@ -61,6 +61,7 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
     private static final long FRAME_MAX_AGE_NANOS = 250_000_000L;
     private static final long RAYCAST_TTL_NANOS = 180_000_000L;
     private static final float RAYCAST_QUANT_DEG = 0.25f;
+    private static final float MIN_SHEET_SPAN_RAD = (float) Math.toRadians(0.25);
 
     private BakedModel cachedPanModel;
     private BakedModel cachedTiltModel;
@@ -68,6 +69,11 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
 
     private final WeakHashMap<LaserProjectorBlockEntity, RaycastCache> raycastCaches = new WeakHashMap<>();
     private long lastDebugNanos;
+    private long lastDirDebugNanos;
+
+    private static String fmt(Vec3 v) {
+        return String.format("(%.2f,%.2f,%.2f)", v.x, v.y, v.z);
+    }
 
     private void debug(String fmt, Object... args) {
         long now = System.nanoTime();
@@ -202,7 +208,8 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
             Vec3 d1 = worldDir(m, geo.dir1[i], d);
             float spanRad = (float) Math.toRadians(geo.spanDeg[i]);
             float p0 = totalSpan > 0.0 ? (float) (cum / totalSpan) : 0f;
-            boolean point = geo.segment[i].isPoint() || spanRad <= 1.0e-4f;
+            // Below ~0.25 deg a sheet degenerates into a line; draw it as a beam instead.
+            boolean point = geo.segment[i].isPoint() || spanRad <= MIN_SHEET_SPAN_RAD;
             int color = geo.color[i];
             if (point) {
                 int flags = LaserFigure.FLAG_BEAM0 | (geo.hit0[i] ? LaserFigure.FLAG_HIT0 : 0);
@@ -221,7 +228,24 @@ public class LaserProjectorRenderer extends ExtraLightsFixtureRenderer<LaserProj
 
         fig.fixturePos = be.getBlockPos();
         fig.origin = originW;
-        debug("figure count={} origin={} totalSpan={}", fig.count, originW, totalSpan);
+        if (System.nanoTime() - lastDirDebugNanos > 1_000_000_000L) {
+            lastDirDebugNanos = System.nanoTime();
+            Vec3 mean = Vec3.ZERO;
+            for (int i = 0; i < n; i++) mean = mean.add(worldDir(m, geo.dir0[i], d));
+            mean = mean.lengthSqr() > 1e-9 ? mean.normalize() : new Vec3(0, 0, 1);
+            double minDot = 1.0; int worst = -1;
+            for (int i = 0; i < n; i++) {
+                double dot = worldDir(m, geo.dir0[i], d).dot(mean);
+                if (dot < minDot) { minDot = dot; worst = i; }
+            }
+            Vec3 axis = worldDir(m, new Vec3(0, 0, 1), d);
+            Vec3 rayAxis = worldDir(be, 0f, 0f);
+            com.github.dumann089.theatricalextralights.TheatricalExtraLights.LOGGER.debug(
+                    "[LaserProjector] dirs: n={} mean={} minDot={} worstLocal={} lensAxis(pose)={} lensAxis(raycast)={} agree={} pan={} tilt={} hanging={} flipped={} origin={}",
+                    n, fmt(mean), String.format("%.3f", minDot), worst >= 0 ? fmt(geo.dir0[worst]) : "-",
+                    fmt(axis), fmt(rayAxis), String.format("%.3f", axis.dot(rayAxis)),
+                    be.getPan(), be.getTilt(), isHanging, isFlipped, fmt(originW));
+        }
         fig.intensity = 1.0f;
         fig.totalSpan = totalSpan > 0.0 ? (float) totalSpan : 1f;
         fig.divergence = 0.0012f;
