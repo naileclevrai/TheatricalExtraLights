@@ -259,7 +259,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 Tesselator tess = Tesselator.getInstance();
                 BufferBuilder bb = tess.getBuilder();
                 bb.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
-                drawConeProxy(bb, viewMat, s, endRadius);
+                drawConeProxy(bb, viewMat, s, endRadius, camPos);
                 BufferUploader.drawWithShader(bb.end());
                 renderType.clearRenderState();
             }
@@ -384,7 +384,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         }
     }
 
-    private static void drawConeProxy(BufferBuilder vc, Matrix4f mat, BeamSlot s, float endRadius) {
+    private static void drawConeProxy(BufferBuilder vc, Matrix4f mat, BeamSlot s, float endRadius, Vec3 camPos) {
         float startR = Math.max(s.baseRadius, 0.05f) * Math.max(s.widthScale, s.heightScale);
         float pad = Math.max(startR, endRadius) * 1.15f + 0.25f;
 
@@ -402,12 +402,33 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         float maxY = Math.max(oy, ey) + pad;
         float maxZ = Math.max(oz, ez) + pad;
 
-        emitQuad(vc, mat, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ, minX, minY, maxZ);
-        emitQuad(vc, mat, maxX, maxY, minZ, minX, maxY, minZ, minX, minY, minZ, maxX, minY, minZ);
-        emitQuad(vc, mat, maxX, maxY, maxZ, maxX, maxY, minZ, maxX, minY, minZ, maxX, minY, maxZ);
-        emitQuad(vc, mat, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ, minX, minY, minZ);
-        emitQuad(vc, mat, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ);
-        emitQuad(vc, mat, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, minX, minY, minZ);
+        // Camera dans la boite (avec la marge du plan proche) : les faces avant sont derriere l'oeil
+        // et les faces du fond, vues de l'interieur, sont enroulees a l'envers pour le culling. On
+        // inverse alors l'ordre des sommets : chaque pixel est couvert une fois par la face du fond
+        // et le raymarch part de la camera. Sans cela, un faisceau qui pointe vers le spectateur
+        // disparait des qu'il y entre (nappe d'une barre LED regardee de face, lyre en contre).
+        float margin = 0.1f;
+        boolean inside = camPos.x > minX - margin && camPos.x < maxX + margin
+                && camPos.y > minY - margin && camPos.y < maxY + margin
+                && camPos.z > minZ - margin && camPos.z < maxZ + margin;
+
+        boxQuad(vc, mat, inside, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ, minX, minY, maxZ);
+        boxQuad(vc, mat, inside, maxX, maxY, minZ, minX, maxY, minZ, minX, minY, minZ, maxX, minY, minZ);
+        boxQuad(vc, mat, inside, maxX, maxY, maxZ, maxX, maxY, minZ, maxX, minY, minZ, maxX, minY, maxZ);
+        boxQuad(vc, mat, inside, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ, minX, minY, minZ);
+        boxQuad(vc, mat, inside, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ);
+        boxQuad(vc, mat, inside, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, minX, minY, minZ);
+    }
+
+    /** Face de la boite, enroulee vers l'exterieur, ou vers l'interieur quand la camera est dedans. */
+    private static void boxQuad(BufferBuilder vc, Matrix4f mat, boolean inside,
+                                float x1, float y1, float z1, float x2, float y2, float z2,
+                                float x3, float y3, float z3, float x4, float y4, float z4) {
+        if (inside) {
+            emitQuad(vc, mat, x4, y4, z4, x3, y3, z3, x2, y2, z2, x1, y1, z1);
+        } else {
+            emitQuad(vc, mat, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4);
+        }
     }
 
     private static void emitQuad(BufferBuilder vc, Matrix4f mat,
