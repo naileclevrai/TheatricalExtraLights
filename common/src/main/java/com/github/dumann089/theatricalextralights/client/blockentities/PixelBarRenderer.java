@@ -66,15 +66,17 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     }
 
     /**
-     * Faisceau volumetrique plat par pixel : le cone est ecrase en travers pour faire une nappe, ce
-     * qui lui donne la haze, la poussiere et les ombres des lyres sans le volume d'un cone rond. Des
-     * cones ronds a 5 % additionnaient encore une rangee de barres en un eventail blanc ; des nappes
-     * se recouvrent bien moins.
+     * Nappe volumetrique par plage de LED : le moteur trace un cone de rayon max(rayon de base,
+     * distance x tan(demi-angle)), etire par un facteur en U et en V. Le rayon de base est la
+     * demi-largeur de la plage allumee et le demi-angle est petit : une LED seule fait une ligne
+     * fine qui garde sa largeur sur plusieurs blocs, et chaque voisine allumee ajoute exactement la
+     * sienne. (Avec un facteur U egal a la largeur de la plage, la divergence aurait ete multipliee
+     * elle aussi : neuf LED faisaient un eventail de vingt blocs au plafond.)
      */
-    private static final float PIXEL_HALF_ANGLE_DEG = 12.0f;
+    private static final float PIXEL_HALF_ANGLE_DEG = 2.0f;
     private static final float PIXEL_BEAM_INTENSITY = 0.08f;
-    /** Ecrasement de la nappe volumetrique en travers, par rapport a sa largeur. */
-    private static final float PIXEL_BEAM_FLATNESS = 0.12f;
+    /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
+    private static final float SHEET_HALF_THICKNESS = 0.04f;
     /** Lueur douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
     private static final float DOT_GLOW_STRENGTH = 0.55f;
     /** La cellule (lentille) autour de la LED s'eclaire faiblement. */
@@ -122,13 +124,14 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                 PoseStack beamPose = new PoseStack();
                 preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
                 beamPose.translate(s.faceX() + s.x(centre, 0f), s.faceY() + s.y(centre, 0f), s.faceZ());
-                float runScale = halfRun / s.halfAlong();
-                float widthScale = s.vertical() ? PIXEL_BEAM_FLATNESS : runScale;
-                float heightScale = s.vertical() ? runScale : PIXEL_BEAM_FLATNESS;
+                // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe.
+                float thin = SHEET_HALF_THICKNESS / halfRun;
+                float widthScale = s.vertical() ? thin : 1f;
+                float heightScale = s.vertical() ? 1f : thin;
                 // Couleur pleine, la luminosite passe dans l'intensite.
                 submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
                         null, 0, 0f, widthScale, heightScale, run[0]++, normalise(colour),
-                        master * meanLevel / 255f * PIXEL_BEAM_INTENSITY, s.halfAlong());
+                        master * meanLevel / 255f * PIXEL_BEAM_INTENSITY, halfRun);
             });
         }
 
