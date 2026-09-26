@@ -14,7 +14,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class LaserFigure {
 
-    public static final int MAX_SEGMENTS = 256;
+    /** Egal a TheatricalExtraLightsConfig.MAX_LASER_SEGMENTS et a la boucle du shader. */
+    public static final int MAX_SEGMENTS = 512;
 
     public static final int FLAG_HIT0 = 1;
     public static final int FLAG_HIT1 = 2;

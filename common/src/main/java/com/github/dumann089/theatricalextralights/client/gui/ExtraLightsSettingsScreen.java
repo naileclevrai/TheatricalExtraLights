@@ -293,6 +293,12 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.radius",
                 0.2f, 6f, TheatricalExtraLightsConfig.getLaserBeamRadiusCm(), 1, " cm",
                 TheatricalExtraLightsConfig::setLaserBeamRadiusCm));
+        y += widgetHeight + rowGap;
+
+        addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.detail",
+                16f, (float) TheatricalExtraLightsConfig.MAX_LASER_SEGMENTS,
+                TheatricalExtraLightsConfig.getLaserDacMaxRays(), 0, "",
+                v -> TheatricalExtraLightsConfig.setLaserDacMaxRays(Math.round(v))));
     }
 
     // Widgets --------------------------------------------------------------
