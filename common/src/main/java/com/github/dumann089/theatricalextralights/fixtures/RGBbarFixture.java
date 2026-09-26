@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.fixtures;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
+import com.github.dumann089.theatricalextralights.blockentities.RGBBarBlockEntity;
 import dev.imabad.theatrical.Theatrical;
 import dev.imabad.theatrical.api.Fixture;
 import dev.imabad.theatrical.api.HangType;
@@ -11,17 +12,30 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.Collections;
 import java.util.List;
 
 public class RGBbarFixture extends Fixture {
 
-    private static final List<DMXPersonality> PERSONALITIES = Collections.singletonList(
+    /** Dimmer + un RGB par pixel : 1 + 9 x 3 = 28 canaux. */
+    public static final int PIXEL_CHANNEL_COUNT = 1 + RGBBarBlockEntity.PIXEL_COUNT * 3;
+
+    private static DMXPersonality buildPixelPersonality() {
+        DMXPersonality p = new DMXPersonality(PIXEL_CHANNEL_COUNT,
+                PIXEL_CHANNEL_COUNT + "-Channel Pixel Mode (Dimmer + " + RGBBarBlockEntity.PIXEL_COUNT + "x RGB)")
+                .addSlot(SharedSlots.INTENSITY);
+        for (int i = 0; i < RGBBarBlockEntity.PIXEL_COUNT; i++) {
+            p.addSlot(SharedSlots.RED).addSlot(SharedSlots.GREEN).addSlot(SharedSlots.BLUE);
+        }
+        return p;
+    }
+
+    private static final List<DMXPersonality> PERSONALITIES = List.of(
             new DMXPersonality(4, "4-Channel Mode")
                     .addSlot(SharedSlots.INTENSITY)
                     .addSlot(SharedSlots.RED)
                     .addSlot(SharedSlots.GREEN)
-                    .addSlot(SharedSlots.BLUE)
+                    .addSlot(SharedSlots.BLUE),
+            buildPixelPersonality()
     );
 
     private static final ResourceLocation TILT_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/ledbar/ledbar_tilt");
@@ -72,7 +86,7 @@ public class RGBbarFixture extends Fixture {
     public float getBeamWidth() {
         return 0.0f;
     }
-    
+
     @Override
     public float getRayTraceRotation() {
         return 0f;
