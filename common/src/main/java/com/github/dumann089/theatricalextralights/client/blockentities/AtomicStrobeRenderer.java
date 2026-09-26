@@ -1,12 +1,15 @@
 package com.github.dumann089.theatricalextralights.client.blockentities;
 
 import com.github.dumann089.theatricalextralights.blockentities.AtomicStrobeBlockEntity;
+import com.github.dumann089.theatricalextralights.client.StrobeVisualEffects;
 import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.imabad.theatrical.TheatricalExpectPlatform;
 import dev.imabad.theatrical.blocks.HangableBlock;
+import dev.imabad.theatrical.client.LazyRenderers;
+import net.minecraft.client.Camera;
 import com.github.dumann089.theatricalextralights.client.blockentities.ExtraLightsRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -14,6 +17,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
 import java.util.Optional;
@@ -24,7 +28,7 @@ import java.util.Optional;
  * Overlay = 8 RGB zones (4 top + 4 bottom) and 9 white LED bar segments,
  * each lit according to live DMX values.
  */
-public class AtomicStrobeRenderer extends ExtraLightsRenderer<AtomicStrobeBlockEntity> {
+public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrobeBlockEntity> {
 
     private BakedModel cachedPanModel, cachedTiltModel, cachedStaticModel;
 
@@ -183,7 +187,42 @@ public class AtomicStrobeRenderer extends ExtraLightsRenderer<AtomicStrobeBlockE
                                  MultiBufferSource multiBufferSource, Direction facing, float partialTicks,
                                  boolean isFlipped, BlockState blockstate, boolean isHanging,
                                  int packedLight, int packedOverlay) {
-        // No projected beam — atomic strobe is a wash-style fixture
+        // Couleur et intensite agregees de toutes les zones (voir AtomicStrobeBlockEntity#consume).
+        if (blockEntity.getIntensity() <= 0) {
+            return;
+        }
+
+        LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
+            @Override
+            public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, Camera camera, float partialTick) {
+                // Les zones dessinent deja leur face emissive : seulement le halo.
+                renderStrobeFlash(bufferSource, poseStack, camera, blockEntity,
+                        pose -> applyHead(blockEntity, pose, facing, partialTick, isFlipped, blockstate, isHanging),
+                        StrobeVisualEffects.Face.ATOMIC, blockEntity.getColour(),
+                        blockEntity.getIntensity() / 255f, false);
+            }
+
+            @Override
+            public Vec3 getPos(float partialTick) {
+                return blockEntity.getBlockPos().getCenter();
+            }
+        });
+    }
+
+    /** preparePoseStack s'arrete avant pan/tilt ; la tete, elle, les applique comme renderModel. */
+    private void applyHead(AtomicStrobeBlockEntity blockEntity, PoseStack poseStack, Direction facing,
+                           float partialTicks, boolean isFlipped, BlockState blockState, boolean isHanging) {
+        preparePoseStack(blockEntity, poseStack, facing, partialTicks, isFlipped, blockState, isHanging);
+        float[] pans = blockEntity.getFixture().getPanRotationPosition();
+        poseStack.translate(pans[0], pans[1], pans[2]);
+        poseStack.mulPose(Axis.YP.rotationDegrees(
+                blockEntity.getPrevPan() + (blockEntity.getPan() - blockEntity.getPrevPan()) * partialTicks));
+        poseStack.translate(-pans[0], -pans[1], -pans[2]);
+        float[] tilts = blockEntity.getFixture().getTiltRotationPosition();
+        poseStack.translate(tilts[0], tilts[1], tilts[2]);
+        poseStack.mulPose(Axis.XP.rotationDegrees(
+                blockEntity.getPrevTilt() + (blockEntity.getTilt() - blockEntity.getPrevTilt()) * partialTicks));
+        poseStack.translate(-tilts[0], -tilts[1], -tilts[2]);
     }
 
     @Override
