@@ -78,6 +78,14 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float PIXEL_BEAM_INTENSITY = 0.08f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
+    /**
+     * Plage de LED allumees qui melange plusieurs couleurs : une nappe liante couvre toute la plage
+     * dans la couleur moyenne, et les nappes par couleur baissent. Pres de la barre le faisceau se
+     * lit alors comme une seule nappe de la largeur de la barre, avec ses rayons colores dedans,
+     * au lieu de neuf rayons separes par des creux.
+     */
+    private static final float BINDER_SHARE = 0.5f;
+    private static final float RUN_SHARE_IN_MIXED_SPAN = 0.7f;
     /** Lueur large et douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
     private static final float DOT_GLOW_STRENGTH = 0.65f;
     /** Bloom serre autour de la LED : un halo vif, a une fraction du rayon de la lueur large. */
@@ -128,21 +136,25 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
             // niveau moyen) : le raymarch coute par faisceau, une barre unie en neuf nappes cote a
             // cote rend la meme image qu'une seule nappe large, et une nappe qui se casserait en
             // lignes des que deux niveaux different clignoterait pendant un fondu ou un chase.
-            int[] run = {0};
+            int[] index = {0};
+            boolean[] inMixedSpan = new boolean[count];
+            // Plages allumees toutes couleurs confondues : une nappe liante quand elles melangent.
+            forEachLitSpan(blockEntity, (start, end, meanColour, meanLevel, colourRuns) -> {
+                if (colourRuns < 2) {
+                    return;
+                }
+                for (int i = start; i <= end; i++) {
+                    inMixedSpan[i] = true;
+                }
+                submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
+                        start, end, meanColour, master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain * BINDER_SHARE,
+                        index[0]++);
+            });
             forEachLitRun(blockEntity, (start, end, colour, meanLevel) -> {
-                float centre = (s.along(start) + s.along(end)) * 0.5f;
-                float halfRun = (s.along(end) - s.along(start)) * 0.5f + s.halfAlong();
-                PoseStack beamPose = new PoseStack();
-                preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
-                beamPose.translate(s.faceX() + s.x(centre, 0f), s.faceY() + s.y(centre, 0f), s.faceZ());
-                // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe.
-                float thin = SHEET_HALF_THICKNESS / halfRun;
-                float widthScale = s.vertical() ? thin : 1f;
-                float heightScale = s.vertical() ? 1f : thin;
-                // Couleur pleine, la luminosite passe dans l'intensite.
-                submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
-                        null, 0, 0f, widthScale, heightScale, run[0]++, normalise(colour),
-                        master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain, halfRun);
+                float share = inMixedSpan[start] ? RUN_SHARE_IN_MIXED_SPAN : 1f;
+                submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
+                        start, end, colour, master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain * share,
+                        index[0]++);
             });
         }
 
@@ -269,6 +281,70 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                 addVertex(vc, m, normal, r, g, b, 0, s.x(c - w1, t), s.y(c - w1, t), -length);
             }
         });
+    }
+
+    /** Une nappe volumetrique couvrant les pixels {@code start} a {@code end}, dans la couleur donnee. */
+    private void submitSheet(T blockEntity, Strip s, Direction facing, float partialTicks, boolean isFlipped,
+                             BlockState blockstate, boolean isHanging, int start, int end, int colour,
+                             float intensity, int beamIndex) {
+        float centre = (s.along(start) + s.along(end)) * 0.5f;
+        float halfRun = (s.along(end) - s.along(start)) * 0.5f + s.halfAlong();
+        PoseStack beamPose = new PoseStack();
+        preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
+        beamPose.translate(s.faceX() + s.x(centre, 0f), s.faceY() + s.y(centre, 0f), s.faceZ());
+        // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe.
+        float thin = SHEET_HALF_THICKNESS / halfRun;
+        float widthScale = s.vertical() ? thin : 1f;
+        float heightScale = s.vertical() ? 1f : thin;
+        // Couleur pleine, la luminosite passe dans l'intensite.
+        submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
+                null, 0, 0f, widthScale, heightScale, beamIndex, normalise(colour), intensity, halfRun);
+    }
+
+    /** Une plage de LED voisines allumees, toutes couleurs confondues. */
+    @FunctionalInterface
+    protected interface LitSpan {
+        /**
+         * @param meanColour couleur brute moyenne, ponderee par le niveau de chaque LED
+         * @param colourRuns nombre de suites de couleur dans la plage (1 = plage unie)
+         */
+        void accept(int start, int end, int meanColour, float meanLevel, int colourRuns);
+    }
+
+    /** Parcourt les plages de LED voisines allumees, sans distinction de couleur. */
+    protected static void forEachLitSpan(PixelBarBlockEntity blockEntity, LitSpan consumer) {
+        int count = blockEntity.getPixelCount();
+        int start = 0;
+        while (start < count) {
+            if (blockEntity.getPixelLevel(start) <= 0) {
+                start++;
+                continue;
+            }
+            int end = start;
+            while (end + 1 < count && blockEntity.getPixelLevel(end + 1) > 0) {
+                end++;
+            }
+            long r = 0, g = 0, b = 0, weight = 0;
+            int colourRuns = 0;
+            int last = -1;
+            for (int i = start; i <= end; i++) {
+                int colour = blockEntity.getPixelColour(i);
+                int level = blockEntity.getPixelLevel(i);
+                r += (long) ((colour >> 16) & 0xFF) * level;
+                g += (long) ((colour >> 8) & 0xFF) * level;
+                b += (long) (colour & 0xFF) * level;
+                weight += level;
+                if (colour != last) {
+                    colourRuns++;
+                    last = colour;
+                }
+            }
+            int mean = weight > 0
+                    ? ((int) (r / weight) << 16) | ((int) (g / weight) << 8) | (int) (b / weight)
+                    : 0;
+            consumer.accept(start, end, mean, weight / (float) (end - start + 1), colourRuns);
+            start = end + 1;
+        }
     }
 
     /** Une plage de LED voisines allumees, de la meme couleur brute. */
