@@ -20,19 +20,23 @@ import java.util.List;
  * Barre LED a neuf pixels.
  *
  * <p>Deux personnalites : 4 canaux (dimmer + un RGB pour toute la barre, comportement d'origine)
- * et 28 canaux (dimmer + un RGB par pixel). Dans les deux cas {@code red/green/blue} portent la
- * couleur moyenne et {@code intensity} le dimmer, pour la lumiere dynamique et les outils qui
- * ne connaissent qu'une couleur ; le rendu par pixel lit {@link #getPixelColour(int)}.
+ * et 36 canaux (un dimmer et un RGB par pixel, pas de dimmer general). Dans les deux cas
+ * {@code red/green/blue} portent la couleur moyenne et {@code intensity} le niveau de la barre
+ * (en mode pixel : le dimmer du pixel le plus fort), pour la lumiere dynamique et les outils qui ne
+ * connaissent qu'une couleur ; le rendu par pixel lit {@link #getPixelColour(int)} et
+ * {@link #getPixelDimmer(int)}.
  */
 public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements HasPersonality {
 
     public static final int PIXEL_COUNT = 9;
+    /** Canaux DMX par pixel : dimmer, rouge, vert, bleu. */
+    public static final int PIXEL_STRIDE = 4;
     private static final int MODE_4CH = 0;
     private static final int MODE_PIXEL = 1;
 
     private int activePersonalityIndex = MODE_4CH;
-    /** [p0.r, p0.g, p0.b, p1.r, ...] — en mode 4 canaux, tous les pixels valent red/green/blue. */
-    private final int[] pixels = new int[PIXEL_COUNT * 3];
+    /** [p0.dim, p0.r, p0.g, p0.b, p1.dim, ...] bruts ; en mode 4 canaux, ignores (la barre vaut red/green/blue). */
+    private final int[] pixels = new int[PIXEL_COUNT * PIXEL_STRIDE];
 
     public RGBBarBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntities.RGB_BAR.get(), pos, state);
@@ -79,7 +83,18 @@ public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements Ha
         return activePersonalityIndex == MODE_PIXEL;
     }
 
-    /** Couleur 0xRRGGBB du pixel ; en mode 4 canaux, la couleur de la barre. */
+    /** Dimmer propre du pixel 0..255 ; 255 en mode 4 canaux, ou le dimmer de la barre est {@code intensity}. */
+    public int getPixelDimmer(int pixel) {
+        if (!isPixelMode()) {
+            return 255;
+        }
+        if (pixel < 0 || pixel >= PIXEL_COUNT) {
+            return 0;
+        }
+        return pixels[pixel * PIXEL_STRIDE];
+    }
+
+    /** Couleur 0xRRGGBB brute du pixel (avant son dimmer) ; en mode 4 canaux, la couleur de la barre. */
     public int getPixelColour(int pixel) {
         if (!isPixelMode()) {
             return getColour();
@@ -87,14 +102,18 @@ public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements Ha
         if (pixel < 0 || pixel >= PIXEL_COUNT) {
             return 0;
         }
-        int base = pixel * 3;
-        return (pixels[base] << 16) | (pixels[base + 1] << 8) | pixels[base + 2];
+        int base = pixel * PIXEL_STRIDE;
+        return (pixels[base + 1] << 16) | (pixels[base + 2] << 8) | pixels[base + 3];
     }
 
-    /** Luminosite propre du pixel 0..255 (max de ses composantes), avant le dimmer. */
+    /**
+     * Luminosite du pixel 0..255 : composante la plus forte de sa couleur, multipliee par son dimmer.
+     * En mode 4 canaux, celle de la couleur de la barre (le dimmer est {@code intensity}).
+     */
     public int getPixelLevel(int pixel) {
         int c = getPixelColour(pixel);
-        return Math.max((c >> 16) & 0xFF, Math.max((c >> 8) & 0xFF, c & 0xFF));
+        int max = Math.max((c >> 16) & 0xFF, Math.max((c >> 8) & 0xFF, c & 0xFF));
+        return (max * getPixelDimmer(pixel) + 127) / 255;
     }
 
     @Override
@@ -109,21 +128,26 @@ public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements Ha
         int _pi = intensity, _pr = red, _pg = green, _pb = blue, _pf = focus, _pp = pan, _pt = tilt;
         int[] prevPixels = pixels.clone();
 
-        intensity = convertByteToInt(ourValues[0]);
         if (isPixelMode()) {
-            for (int i = 0; i < PIXEL_COUNT * 3; i++) {
-                pixels[i] = convertByteToInt(ourValues[1 + i]);
+            for (int i = 0; i < PIXEL_COUNT * PIXEL_STRIDE; i++) {
+                pixels[i] = convertByteToInt(ourValues[i]);
             }
-            // Couleur moyenne ponderee par la luminosite de chaque pixel, pour la lumiere dynamique.
+            // Pas de dimmer general : la barre prend le dimmer du pixel le plus fort, et sa couleur
+            // est la moyenne des couleurs brutes ponderee par la luminosite de chaque pixel. Une barre
+            // unie donne ainsi la meme lumiere dynamique qu'en mode 4 canaux.
+            int maxDim = 0;
             long r = 0, g = 0, b = 0, weight = 0;
             for (int p = 0; p < PIXEL_COUNT; p++) {
-                int pr = pixels[p * 3], pg = pixels[p * 3 + 1], pb = pixels[p * 3 + 2];
-                int w = Math.max(pr, Math.max(pg, pb));
+                maxDim = Math.max(maxDim, getPixelDimmer(p));
+                int c = getPixelColour(p);
+                int pr = (c >> 16) & 0xFF, pg = (c >> 8) & 0xFF, pb = c & 0xFF;
+                int w = getPixelLevel(p);
                 r += (long) pr * w;
                 g += (long) pg * w;
                 b += (long) pb * w;
                 weight += w;
             }
+            intensity = maxDim;
             if (weight > 0) {
                 red = (int) (r / weight);
                 green = (int) (g / weight);
@@ -132,6 +156,7 @@ public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements Ha
                 red = green = blue = 0;
             }
         } else {
+            intensity = convertByteToInt(ourValues[0]);
             red = convertByteToInt(ourValues[1]);
             green = convertByteToInt(ourValues[2]);
             blue = convertByteToInt(ourValues[3]);
@@ -142,7 +167,7 @@ public class RGBBarBlockEntity extends ExtraLightsLightBlockEntity implements Ha
         finishDmxUpdate(changed, prevAdvanced);
     }
 
-    /** En mode pixel, les 28 canaux depassent le DmxFrame de Theatrical : sync bloc complete. */
+    /** En mode pixel, les 36 canaux depassent le DmxFrame de Theatrical : sync bloc complete. */
     @Override
     protected boolean hasExtraDmxChannelsBeyondBatch() {
         return isPixelMode();

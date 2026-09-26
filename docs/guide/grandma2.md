@@ -17,9 +17,9 @@ All three are one fixture type, **Nailec / THEATRICAL GOBO**, with three modes. 
 | File | Mode in the mod | Channels |
 |---|---|---|
 | `nailec@theatrical_rgb_bar@4ch.xml` | 4-Channel Mode | 4 |
-| `nailec@theatrical_rgb_bar@28ch_pixel.xml` | 28-Channel Pixel Mode (Dimmer + 9x RGB) | 28 |
+| `nailec@theatrical_rgb_bar@36ch_pixel.xml` | 36-Channel Pixel Mode (9x Dim/RGB) | 36 |
 
-Both are one fixture type, **Nailec / THEATRICAL RGB BAR**. The 28-channel mode is a multi-instance type: the master dimmer sits on the main fixture and the nine pixels appear as sub-fixtures **1.1 to 1.9**, left to right along the bar, so pixel effects, the colour picker and layouts work per pixel. Channel 1 is the dimmer, then R/G/B for each pixel (channels 2 to 28).
+Both are one fixture type, **Nailec / THEATRICAL RGB BAR**. The 36-channel mode is a multi-instance type: the main fixture has no channels of its own and the nine pixels appear as sub-fixtures **1.1 to 1.9**, left to right along the bar, each with its own dimmer and RGB, so dimmer chases, pixel effects, the colour picker and layouts all work per pixel. Channels run Dimmer/R/G/B for pixel 1 (1 to 4), pixel 2 (5 to 8) and so on up to pixel 9 (33 to 36). There is no master dimmer: to fade the whole bar, select the fixture and use its dimmer, which addresses all nine pixels at once.
 
 Download them from the [`tools/grandma2`](https://github.com/dumann089/TheatricalExtraLights/tree/ver/1.20.1/tools/grandma2) folder of the repository.
 

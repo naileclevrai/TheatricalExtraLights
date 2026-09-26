@@ -130,6 +130,19 @@ P_4CH_IRGB = P("4-Channel iRGB", [INTENSITY, RED, GREEN, BLUE])
 P_1CH = P("1-Channel Mode", [INTENSITY], "The colour is fixed by the block.")
 P_1CH_JET = P("1-Channel Mode", [INTENSITY_JET], "Height, thickness and, where available, cone angle or spread are set in the fixture screen, not on DMX.")
 
+def _rgbbar_pixel_channels():
+    out = []
+    for n in range(1, 10):
+        out += [ch(f"Pixel {n} dimmer", "0 off to 255 full", f"Dimmer of pixel {n}. 0 turns the pixel off whatever its colour. There is no master dimmer in this mode; the dynamic light in the room follows the brightest pixel."),
+                ch(f"Pixel {n} red", "0 to 255", f"Red of pixel {n}."),
+                ch(f"Pixel {n} green", "0 to 255", f"Green of pixel {n}."),
+                ch(f"Pixel {n} blue", "0 to 255", f"Blue of pixel {n}.")]
+    return out
+
+
+P_RGBBAR_PIXEL = P("36-Channel Pixel Mode (9x Dim/RGB)", _rgbbar_pixel_channels(),
+                   "Pixels are numbered 1 to 9 from left to right, seen from the front of the bar. Each pixel lights its cell, its LED dot and a flat beam of its own colour; neighbouring pixels of the same colour share one volumetric sheet. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, with the pixels as sub-fixtures 1.1 to 1.9.")
+
 COLOR_PRESETS = ["Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Magenta", "Lightblue", "White"]
 P_PRESETS = [P(c, [ch("Intensity", "0 off to 255 full", f"Master dimmer of the fixed {c.lower()} colour.")]) for c in COLOR_PRESETS] + \
             [P("iRGB", [INTENSITY, RED, GREEN, BLUE], "Free colour mixing instead of a fixed preset.")]
@@ -272,12 +285,12 @@ for id_, name, intro in [("a1x1par64", "2x2 Par64 (Block/Color Preset)", "Block 
                          ("a6x3par64_vertical", "6x3 Par64 Vertical (Color Preset)", "Vertical array of eighteen PAR 64 cans.")]:
     FIXTURES.append(F(id_, name, "PARs & LED panels", intro + " Nine one-channel colour presets or a four-channel RGB mode.", P_PRESETS,
                       ["Pick the colour as a personality when the desk only has one dimmer channel to spare, or iRGB for free mixing."]))
-for id_, name, intro in [("par_led", "LED Par", "LED PAR with colour mixing."), ("led_panel_2", "LED Panel 2", "Flat LED panel."),
-                         ("big_panel", "Big Panel 3x3", "Nine-cell LED panel, driven as one."), ("big_panel2", "Big Panel 3x2", "Six-cell LED panel, driven as one."),
-                         ("rgb_bar", "RGB Bar", "Horizontal LED bar with a soft glow whose reach is `rgbBarBeamLength` in the config."),
-                         ("vertical_bar", "Vertical RGB Bar", "Vertical LED bar."), ("mini_bar", "Mini RGB Bar", "Short LED bar."),
-                         ("truss_3lights", "Truss 3x3 Lights", "Truss piece with nine built-in lights, driven as one.")]:
-    FIXTURES.append(F(id_, name, "PARs & LED panels", intro, [P_4CH]))
+for id_, name, intro, pers in [("par_led", "LED Par", "LED PAR with colour mixing.", [P_4CH]), ("led_panel_2", "LED Panel 2", "Flat LED panel.", [P_4CH]),
+                               ("big_panel", "Big Panel 3x3", "Nine-cell LED panel, driven as one.", [P_4CH]), ("big_panel2", "Big Panel 3x2", "Six-cell LED panel, driven as one.", [P_4CH]),
+                               ("rgb_bar", "RGB Bar", "Horizontal LED bar with nine pixels and a soft glow whose reach is `rgbBarBeamLength` in the config.", [P_4CH, P_RGBBAR_PIXEL]),
+                               ("vertical_bar", "Vertical RGB Bar", "Vertical LED bar.", [P_4CH]), ("mini_bar", "Mini RGB Bar", "Short LED bar.", [P_4CH]),
+                               ("truss_3lights", "Truss 3x3 Lights", "Truss piece with nine built-in lights, driven as one.", [P_4CH])]:
+    FIXTURES.append(F(id_, name, "PARs & LED panels", intro, pers))
 FIXTURES.append(F("led_facade", "LED Facade", "A pixel-mapped LED wall. Paint the lit pixels in its screen, choose the resolution and smoothing, and drive every pixel from the desk.", [
     P("4-Channel Pixel (per lit pixel)", [ch("Pixel dimmer", "0 to 255", "Dimmer of this pixel."), ch("Pixel red", "0 to 255", "Red of this pixel."),
                                           ch("Pixel green", "0 to 255", "Green of this pixel."), ch("Pixel blue", "0 to 255", "Blue of this pixel.")],
