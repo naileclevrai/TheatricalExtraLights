@@ -46,7 +46,7 @@ Select the mode in the fixture config screen; the footprint changes immediately.
 
 ## 34-Channel Pixel Mode (Pan, Tilt + 8x Dim/RGB) (34 ch)
 
-Pixels are numbered 1 to 8 from left to right, seen from the front of the head. Each pixel lights its cell, its LED dot and a flat beam of its own colour; neighbouring pixels of the same colour share one volumetric sheet. There is no master dimmer: to fade the whole bar, select the fixture and use its dimmer. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, with the pixels as sub-fixtures 1.1 to 1.8. Pan and tilt sit on the main fixture, channels 1 and 2, with the same ranges as the 7-Channel Mode; there is no focus channel.
+Pixels are numbered 1 to 8 from left to right, seen from the front of the head. Each pixel lights its cell and its LED dot; a single lit pixel throws one thin sheet of light into the haze, and neighbouring lit pixels of the same colour merge into one sheet that widens with them. There is no master dimmer: to fade the whole bar, select the fixture and use its dimmer. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, with the pixels as sub-fixtures 1.1 to 1.8. Pan and tilt sit on the main fixture, channels 1 and 2, with the same ranges as the 7-Channel Mode; there is no focus channel.
 
 | Ch | Function | Values |
 |---|---|---|
