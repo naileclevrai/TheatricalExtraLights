@@ -170,6 +170,9 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(toggle(contentLeft, y, half, "tel.settings.beam2d",
                 TheatricalExtraLightsConfig::shouldRender2DBeam,
                 TheatricalExtraLightsConfig::setRender2DBeam));
+        addRenderableWidget(slider(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.barbeam",
+                0f, 4f, TheatricalExtraLightsConfig.getRgbBarBeamIntensity(), 1, "x",
+                TheatricalExtraLightsConfig::setRgbBarBeamIntensity));
         y += widgetHeight + rowGap;
 
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.brightness",

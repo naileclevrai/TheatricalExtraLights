@@ -156,6 +156,7 @@ Extra Lights creates `config/theatricalextralights.json` in your Minecraft insta
 |--------|------|---------|-------------|
 | `laserBeamLength` | float | `400.0` | Maximum laser beam length in blocks (minimum `20`). |
 | `rgbBarBeamLength` | float | `9.0` | RGB bar light reach in blocks (minimum `1`). |
+| `rgbBarBeamIntensity` | float | `1.0` | Brightness multiplier for the haze sheets of the LED bars, `0` to `4`. Also on the **Bar beam intensity** slider in the settings screen. |
 | `renderLens` | boolean | `true` | Draw lens glow on compatible fixtures. |
 | `maxGoboDistance` | float | `500.0` | Maximum distance for gobo projection (minimum `10`). |
 | `render2DBeam` | boolean | `false` | Use flat 2D beam rendering instead of volumetric beams where supported. |
@@ -171,6 +172,7 @@ Add scenic blocks (backdrops, decor) so laser beams continue to a wall behind th
 {
   "laserBeamLength": 400.0,
   "rgbBarBeamLength": 9.0,
+  "rgbBarBeamIntensity": 1.0,
   "renderLens": true,
   "maxGoboDistance": 500.0,
   "render2DBeam": false,

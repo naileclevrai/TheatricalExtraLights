@@ -375,6 +375,7 @@
   "tel.settings.laser.flicker": "Scan head",
   "tel.settings.laser.etherdream": "Ether Dream DAC",
   "tel.settings.laser.haze": "Haze",
+  "tel.settings.barbeam": "Bar beam intensity",
   "tel.settings.laser.brightness": "Laser brightness",
   "tel.settings.laser.radius": "Beam radius",
   "tel.settings.laser.detail": "Laser detail (segments)",
