@@ -141,8 +141,8 @@ def _pixel_channels(count):
 
 
 def _pixel_note(count, order):
-    return (f"Pixels are numbered 1 to {count} {order}. Each pixel lights its cell, its LED dot and a flat beam of its own colour; "
-            f"neighbouring pixels of the same colour share one volumetric sheet. There is no master dimmer: to fade the whole bar, "
+    return (f"Pixels are numbered 1 to {count} {order}. Each pixel lights its cell and its LED dot; a single lit pixel throws one thin sheet of light into "
+            f"the haze, and neighbouring lit pixels of the same colour merge into one sheet that widens with them. There is no master dimmer: to fade the whole bar, "
             f"select the fixture and use its dimmer. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, "
             f"with the pixels as sub-fixtures 1.1 to 1.{count}.")
 
