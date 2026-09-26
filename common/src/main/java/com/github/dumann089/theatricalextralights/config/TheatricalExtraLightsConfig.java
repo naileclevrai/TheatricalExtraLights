@@ -90,7 +90,11 @@ public class TheatricalExtraLightsConfig {
     private Integer etherDreamHwRevision = 2;
     private Integer etherDreamSwRevision = 2;
     private String etherDreamMac = "02:00:00:ED:01:00";
-    private Integer laserDacMaxRays = 96;
+    /**
+     * Segments max d'une figure DAC par image. Au-dela, les points sont decimes et les courbes
+     * (un « 60 » en texte) deviennent anguleuses. Chaque segment coute a chaque pixel couvert.
+     */
+    private Integer laserDacMaxRays = 192;
     private Integer laserDacBlankThreshold = 256;
     /** Persistence window (ms) used to rebuild the scan picture: must cover a full ILDA frame (>= 1/fps). */
     private Integer laserDacPersistenceMs = 90;
@@ -406,9 +410,15 @@ public class TheatricalExtraLightsConfig {
         return parsed != null ? parsed : com.github.dumann089.theatricalextralights.laser.dac.LaserProtocol.DEFAULT_MAC.clone();
     }
     public static int getLaserDacMaxRays() {
-        int value = INSTANCE.laserDacMaxRays != null ? INSTANCE.laserDacMaxRays : 96;
-        return Math.max(8, Math.min(256, value));
+        int value = INSTANCE.laserDacMaxRays != null ? INSTANCE.laserDacMaxRays : 192;
+        return Math.max(8, Math.min(MAX_LASER_SEGMENTS, value));
     }
+    public static void setLaserDacMaxRays(int value) {
+        INSTANCE.laserDacMaxRays = Math.max(8, Math.min(MAX_LASER_SEGMENTS, value));
+        save();
+    }
+    /** Doit rester egal a LaserFigure.MAX_SEGMENTS et a la borne de boucle de laser_raymarch.fsh. */
+    public static final int MAX_LASER_SEGMENTS = 512;
     public static int getLaserDacPersistenceMs() {
         int value = INSTANCE.laserDacPersistenceMs != null ? INSTANCE.laserDacPersistenceMs : 90;
         return Math.max(20, Math.min(400, value));
