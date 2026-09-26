@@ -82,14 +82,6 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float PIXEL_BEAM_INTENSITY = 0.32f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
-    /**
-     * Plage de LED allumees qui melange plusieurs couleurs : une nappe liante couvre toute la plage
-     * dans la couleur moyenne, et les nappes par couleur baissent. Pres de la barre le faisceau se
-     * lit alors comme une seule nappe de la largeur de la barre, avec ses rayons colores dedans,
-     * au lieu de neuf rayons separes par des creux.
-     */
-    private static final float BINDER_SHARE = 0.5f;
-    private static final float RUN_SHARE_IN_MIXED_SPAN = 0.7f;
     /** Lueur large et douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
     private static final float DOT_GLOW_STRENGTH = 0.65f;
     /** Bloom serre autour de la LED : un halo vif, a une fraction du rayon de la lueur large. */
@@ -135,31 +127,17 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         int count = blockEntity.getPixelCount();
 
         if (volumetric) {
-            // Une LED allumee fait une ligne de haze ; des LED voisines allumees de la meme couleur
-            // font une seule nappe, qui s'elargit avec elles quel que soit leur niveau (rendue au
-            // niveau moyen) : le raymarch coute par faisceau, une barre unie en neuf nappes cote a
-            // cote rend la meme image qu'une seule nappe large, et une nappe qui se casserait en
-            // lignes des que deux niveaux different clignoterait pendant un fondu ou un chase.
+            // Une plage de LED voisines allumees = une seule nappe, quelles que soient leurs couleurs :
+            // couleur moyenne ponderee par le niveau (blanche pour un arc-en-ciel, comme la lumiere
+            // melangee d'une vraie barre dans la haze) et niveau moyen. Une LED seule fait une ligne
+            // fine, chaque voisine allumee elargit la nappe, une LED eteinte la coupe. Une seule passe
+            // de rendu par plage : la courbe de tonalite du shader s'applique a la nappe entiere, au
+            // lieu d'additionner neuf nappes deja saturees quand on regarde le faisceau de cote.
             int[] index = {0};
-            boolean[] inMixedSpan = new boolean[count];
-            // Plages allumees toutes couleurs confondues : une nappe liante quand elles melangent.
-            forEachLitSpan(blockEntity, (start, end, meanColour, meanLevel, colourRuns) -> {
-                if (colourRuns < 2) {
-                    return;
-                }
-                for (int i = start; i <= end; i++) {
-                    inMixedSpan[i] = true;
-                }
-                submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
-                        start, end, meanColour, master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain * BINDER_SHARE,
-                        index[0]++);
-            });
-            forEachLitRun(blockEntity, (start, end, colour, meanLevel) -> {
-                float share = inMixedSpan[start] ? RUN_SHARE_IN_MIXED_SPAN : 1f;
-                submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
-                        start, end, colour, master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain * share,
-                        index[0]++);
-            });
+            forEachLitSpan(blockEntity, (start, end, meanColour, meanLevel, colourRuns) ->
+                    submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
+                            start, end, meanColour, master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain,
+                            index[0]++));
         }
 
         LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
@@ -260,7 +238,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         });
     }
 
-    /** Nappes plates : une par plage de LED voisines allumees, a leur couleur, alpha au depart, zero au bout. */
+    /** Nappes plates : une par plage de LED voisines allumees, couleur moyenne, alpha au depart, zero au bout. */
     private void renderFlatBeams(MultiBufferSource.BufferSource bufferSource, PoseStack stack,
                                  T blockEntity, Strip s, float alpha) {
         float length = TheatricalExtraLightsConfig.getRgbBarBeamLength();
@@ -268,7 +246,8 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         VertexConsumer vc = bufferSource.getBuffer(Beam2DRenderTypes.getBeam());
         Matrix4f m = stack.last().pose();
         Matrix3f normal = stack.last().normal();
-        forEachLitRun(blockEntity, (start, end, colour, meanLevel) -> {
+        forEachLitSpan(blockEntity, (start, end, meanColour, meanLevel, colourRuns) -> {
+            int colour = normalise(meanColour);
             int r = (colour >> 16) & 0xFF;
             int g = (colour >> 8) & 0xFF;
             int b = colour & 0xFF;
@@ -347,39 +326,6 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                     ? ((int) (r / weight) << 16) | ((int) (g / weight) << 8) | (int) (b / weight)
                     : 0;
             consumer.accept(start, end, mean, weight / (float) (end - start + 1), colourRuns);
-            start = end + 1;
-        }
-    }
-
-    /** Une plage de LED voisines allumees, de la meme couleur brute. */
-    @FunctionalInterface
-    protected interface LitRun {
-        void accept(int start, int end, int colour, float meanLevel);
-    }
-
-    /**
-     * Parcourt les plages de LED voisines allumees de la meme couleur : une LED seule fait une
-     * plage a elle, et les niveaux peuvent differer dans une plage (rendue au niveau moyen).
-     */
-    protected static void forEachLitRun(PixelBarBlockEntity blockEntity, LitRun consumer) {
-        int count = blockEntity.getPixelCount();
-        int start = 0;
-        while (start < count) {
-            int level = blockEntity.getPixelLevel(start);
-            if (level <= 0) {
-                start++;
-                continue;
-            }
-            int colour = blockEntity.getPixelColour(start);
-            int end = start;
-            long sum = level;
-            while (end + 1 < count
-                    && blockEntity.getPixelLevel(end + 1) > 0
-                    && blockEntity.getPixelColour(end + 1) == colour) {
-                end++;
-                sum += blockEntity.getPixelLevel(end);
-            }
-            consumer.accept(start, end, colour, sum / (float) (end - start + 1));
             start = end + 1;
         }
     }
