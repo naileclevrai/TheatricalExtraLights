@@ -74,6 +74,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      * elle aussi : neuf LED faisaient un eventail de vingt blocs au plafond.)
      */
     private static final float PIXEL_HALF_ANGLE_DEG = 2.0f;
+    /** Intensite de base d'une nappe ; multipliee par le reglage « Bar beam » de la config. */
     private static final float PIXEL_BEAM_INTENSITY = 0.08f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
@@ -108,6 +109,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         boolean pixelMode = blockEntity.isPixelMode();
         float master = pixelMode ? 1f : blockEntity.getIntensity() / 255f;
         boolean volumetric = TheatricalExtraLightsConfig.isVolumetricBeamEnabled();
+        float beamGain = TheatricalExtraLightsConfig.getRgbBarBeamIntensity();
         Strip s = strip();
         int count = blockEntity.getPixelCount();
 
@@ -131,7 +133,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                 // Couleur pleine, la luminosite passe dans l'intensite.
                 submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
                         null, 0, 0f, widthScale, heightScale, run[0]++, normalise(colour),
-                        master * meanLevel / 255f * PIXEL_BEAM_INTENSITY, halfRun);
+                        master * meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain, halfRun);
             });
         }
 
@@ -209,7 +211,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                     poseStack.translate(offset.x, offset.y, offset.z);
                     preparePoseStack(blockEntity, poseStack, facing, partialTick, isFlipped, blockstate, isHanging);
                     poseStack.translate(s.faceX(), s.faceY(), s.faceZ());
-                    renderFlatBeams(bufferSource, poseStack, blockEntity, s, alpha);
+                    renderFlatBeams(bufferSource, poseStack, blockEntity, s, alpha * beamGain);
                     poseStack.popPose();
                 }
             }
@@ -233,7 +235,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
             int r = (colour >> 16) & 0xFF;
             int g = (colour >> 8) & 0xFF;
             int b = colour & 0xFF;
-            int a = (int) (alpha * meanLevel / 255f * FLAT_BEAM_ALPHA * opacity * 255);
+            int a = Math.min(255, (int) (alpha * meanLevel / 255f * FLAT_BEAM_ALPHA * opacity * 255));
             if (a <= 0) return;
             float c = (s.along(start) + s.along(end)) * 0.5f;
             float w0 = (s.along(end) - s.along(start)) * 0.5f + s.halfAlong();
