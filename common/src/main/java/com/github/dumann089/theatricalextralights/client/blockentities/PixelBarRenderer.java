@@ -74,8 +74,12 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      * elle aussi : neuf LED faisaient un eventail de vingt blocs au plafond.)
      */
     private static final float PIXEL_HALF_ANGLE_DEG = 2.0f;
-    /** Intensite de base d'une nappe ; multipliee par le reglage « Bar beam » de la config. */
-    private static final float PIXEL_BEAM_INTENSITY = 0.08f;
+    /**
+     * Intensite de base d'une nappe, multipliee par le reglage « Bar beam » de la config. Une nappe
+     * n'a que 0.08 bloc d'epaisseur : un rayon y traverse bien moins de haze que dans un cone rond,
+     * d'ou une base bien plus haute que les 8 % de l'ancien eventail.
+     */
+    private static final float PIXEL_BEAM_INTENSITY = 0.32f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
     /**
