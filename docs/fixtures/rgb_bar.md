@@ -34,7 +34,7 @@ Select the mode in the fixture config screen; the footprint changes immediately.
 
 ## 36-Channel Pixel Mode (9x Dim/RGB) (36 ch)
 
-Pixels are numbered 1 to 9 from left to right, seen from the front of the bar. Each pixel lights its cell, its LED dot and a flat beam of its own colour; neighbouring pixels of the same colour share one volumetric sheet. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, with the pixels as sub-fixtures 1.1 to 1.9.
+Pixels are numbered 1 to 9 from left to right, seen from the front of the bar. Each pixel lights its cell, its LED dot and a flat beam of its own colour; neighbouring pixels of the same colour share one volumetric sheet. There is no master dimmer: to fade the whole bar, select the fixture and use its dimmer. A ready-made [grandMA2 fixture file](/guide/grandma2) exists for this mode, with the pixels as sub-fixtures 1.1 to 1.9.
 
 | Ch | Function | Values |
 |---|---|---|

@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.fixtures;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
+import com.github.dumann089.theatricalextralights.blockentities.PixelBarBlockEntity;
 import com.github.dumann089.theatricalextralights.blockentities.RGBBarBlockEntity;
 import dev.imabad.theatrical.Theatrical;
 import dev.imabad.theatrical.api.Fixture;
@@ -17,16 +18,7 @@ import java.util.List;
 public class RGBbarFixture extends Fixture {
 
     /** Un dimmer et un RGB par pixel, pas de dimmer general : 9 x 4 = 36 canaux. */
-    public static final int PIXEL_CHANNEL_COUNT = RGBBarBlockEntity.PIXEL_COUNT * RGBBarBlockEntity.PIXEL_STRIDE;
-
-    private static DMXPersonality buildPixelPersonality() {
-        DMXPersonality p = new DMXPersonality(PIXEL_CHANNEL_COUNT,
-                PIXEL_CHANNEL_COUNT + "-Channel Pixel Mode (" + RGBBarBlockEntity.PIXEL_COUNT + "x Dim/RGB)");
-        for (int i = 0; i < RGBBarBlockEntity.PIXEL_COUNT; i++) {
-            p.addSlot(SharedSlots.INTENSITY).addSlot(SharedSlots.RED).addSlot(SharedSlots.GREEN).addSlot(SharedSlots.BLUE);
-        }
-        return p;
-    }
+    public static final int PIXEL_CHANNEL_COUNT = PixelBarBlockEntity.pixelModeChannelCount(0, RGBBarBlockEntity.PIXEL_COUNT);
 
     private static final List<DMXPersonality> PERSONALITIES = List.of(
             new DMXPersonality(4, "4-Channel Mode")
@@ -34,7 +26,9 @@ public class RGBbarFixture extends Fixture {
                     .addSlot(SharedSlots.RED)
                     .addSlot(SharedSlots.GREEN)
                     .addSlot(SharedSlots.BLUE),
-            buildPixelPersonality()
+            PixelBarPersonalities.addPixels(new DMXPersonality(PIXEL_CHANNEL_COUNT,
+                    PixelBarPersonalities.pixelModeName(PIXEL_CHANNEL_COUNT, RGBBarBlockEntity.PIXEL_COUNT, "")),
+                    RGBBarBlockEntity.PIXEL_COUNT)
     );
 
     private static final ResourceLocation TILT_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/ledbar/ledbar_tilt");

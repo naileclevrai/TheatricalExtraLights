@@ -3,7 +3,7 @@
   <Info datetime="2026-9-26T22:00:00" showfile="ma fixture builder"/>
   <FixtureType index="0" name="THEATRICAL RGB BAR" mode="36CH Pixel">
     <InfoItems>
-      <Info>Theatrical Extra Lights RGB Bar in the 36-channel pixel personality: Dimmer/Red/Green/Blue for each of the 9 pixels, left to right, no master dimmer. The pixels are sub-fixtures 1.1 to 1.9, each with its own dimmer and colour; the main fixture has no channels, selecting it addresses all nine pixels. Requires mod personality "36-Channel Pixel Mode (9x Dim/RGB)".</Info>
+      <Info>Theatrical Extra Lights RGB Bar in the 36-channel pixel personality: Dimmer/Red/Green/Blue for each of the 9 pixels, left to right, no master dimmer. The pixels are sub-fixtures 1.1 to 1.9, each with its own dimmer and colour; the main fixture has no channels, and selecting it addresses all pixels. Requires mod personality "36-Channel Pixel Mode (9x Dim/RGB)".</Info>
     </InfoItems>
     <short_name>TEL-BarPx</short_name>
     <manufacturer>Nailec</manufacturer>
@@ -11,12 +11,12 @@
     <Modules index="0">
       <Module index="0" name="MAIN" class="LED" beamtype="Wash" beam_angle="28" beam_intensity="3000">
         <Body>
-          <Size x="1.0" y="0.08" z="0.08"/>
+          <Size x="2.9" y="0.25" z="0.08"/>
         </Body>
       </Module>
       <Module index="1" name="PIXEL" class="LED" beamtype="Wash" beam_angle="28" beam_intensity="3000">
         <Body>
-          <Size x="0.111" y="0.08" z="0.08"/>
+          <Size x="0.322" y="0.25" z="0.08"/>
         </Body>
         <ChannelType index="0" attribute="DIM" feature="DIMMER" preset="DIMMER" coarse="1" default="0" highlight_value="100" react_to_master="1">
           <ChannelFunction index="0" from="0" to="100" min_dmx_24="0" max_dmx_24="16777215" physfrom="0" physto="1" subattribute="DIM" subattribute_user_name="Dim" attribute="DIM" attribute_user_name="Dim" feature="DIMMER" feature_user_name="Dimmer" preset="DIMMER" preset_user_name="Dimmer">

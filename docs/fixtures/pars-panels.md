@@ -52,6 +52,6 @@ One page per fixture, each channel explained. 51 fixtures.
 | [Big Panel 3x3](/fixtures/big_panel) | 4-Channel Mode (4) |
 | [Big Panel 3x2](/fixtures/big_panel2) | 4-Channel Mode (4) |
 | [RGB Bar](/fixtures/rgb_bar) | 4-Channel Mode (4), 36-Channel Pixel Mode (9x Dim/RGB) (36) |
-| [Vertical RGB Bar](/fixtures/vertical_bar) | 4-Channel Mode (4) |
+| [Vertical RGB Bar](/fixtures/vertical_bar) | 4-Channel Mode (4), 36-Channel Pixel Mode (9x Dim/RGB) (36) |
 | [Mini RGB Bar](/fixtures/mini_bar) | 4-Channel Mode (4) |
 | [Truss 3x3 Lights](/fixtures/truss_3lights) | 4-Channel Mode (4) |
