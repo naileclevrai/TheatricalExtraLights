@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MA xmlns:xml="http://www.w3.org/XML/1998/namespace" major_vers="3" minor_vers="2" stream_vers="2">
-  <Info datetime="2026-9-25T19:00:00" showfile="ma fixture builder"/>
+  <Info datetime="2026-9-26T22:00:00" showfile="ma fixture builder"/>
   <FixtureType index="0" name="THEATRICAL RGB BAR" mode="4CH">
     <InfoItems>
       <Info>Theatrical Extra Lights RGB Bar in the 4-channel personality: Dim, Red, Green, Blue for the whole bar. Requires mod personality "4-Channel Mode".</Info>

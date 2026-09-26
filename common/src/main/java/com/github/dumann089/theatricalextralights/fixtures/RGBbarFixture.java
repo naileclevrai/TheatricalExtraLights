@@ -16,15 +16,14 @@ import java.util.List;
 
 public class RGBbarFixture extends Fixture {
 
-    /** Dimmer + un RGB par pixel : 1 + 9 x 3 = 28 canaux. */
-    public static final int PIXEL_CHANNEL_COUNT = 1 + RGBBarBlockEntity.PIXEL_COUNT * 3;
+    /** Un dimmer et un RGB par pixel, pas de dimmer general : 9 x 4 = 36 canaux. */
+    public static final int PIXEL_CHANNEL_COUNT = RGBBarBlockEntity.PIXEL_COUNT * RGBBarBlockEntity.PIXEL_STRIDE;
 
     private static DMXPersonality buildPixelPersonality() {
         DMXPersonality p = new DMXPersonality(PIXEL_CHANNEL_COUNT,
-                PIXEL_CHANNEL_COUNT + "-Channel Pixel Mode (Dimmer + " + RGBBarBlockEntity.PIXEL_COUNT + "x RGB)")
-                .addSlot(SharedSlots.INTENSITY);
+                PIXEL_CHANNEL_COUNT + "-Channel Pixel Mode (" + RGBBarBlockEntity.PIXEL_COUNT + "x Dim/RGB)");
         for (int i = 0; i < RGBBarBlockEntity.PIXEL_COUNT; i++) {
-            p.addSlot(SharedSlots.RED).addSlot(SharedSlots.GREEN).addSlot(SharedSlots.BLUE);
+            p.addSlot(SharedSlots.INTENSITY).addSlot(SharedSlots.RED).addSlot(SharedSlots.GREEN).addSlot(SharedSlots.BLUE);
         }
         return p;
     }

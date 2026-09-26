@@ -161,7 +161,10 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
         if (blockEntity.getIntensity() <= 0) {
             return;
         }
-        float master = blockEntity.getIntensity() / 255f;
+        // En mode pixel il n'y a pas de dimmer general : chaque pixel porte le sien (dans son niveau
+        // et dans getPixelDimmer), et intensity ne sert qu'a savoir si la barre est allumee.
+        boolean pixelMode = blockEntity.isPixelMode();
+        float master = pixelMode ? 1f : blockEntity.getIntensity() / 255f;
         boolean volumetric = TheatricalExtraLightsConfig.isVolumetricBeamEnabled();
 
         if (volumetric) {
@@ -187,7 +190,7 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
                     beamPose.translate(0.5f + centre, PIXEL_Y, FACE_Z);
                     // Couleur pleine, la luminosite du pixel passe dans l'intensite.
                     submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
-                            null, 0, 0f, halfWidth / PIXEL_HALF, PIXEL_BEAM_FLATNESS, run, normalise(colour, level),
+                            null, 0, 0f, halfWidth / PIXEL_HALF, PIXEL_BEAM_FLATNESS, run, normalise(colour),
                             master * level / 255f * PIXEL_BEAM_INTENSITY, PIXEL_HALF);
                     run++;
                 }
@@ -204,7 +207,7 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
                 preparePoseStack(blockEntity, poseStack, facing, partialTick, isFlipped, blockstate, isHanging);
 
                 float intensity = (blockEntity.getPrevIntensity() + ((blockEntity.getIntensity()) - blockEntity.getPrevIntensity()) * partialTick);
-                float alpha = intensity / 255f;
+                float alpha = pixelMode ? 1f : intensity / 255f;
 
                 poseStack.translate(0.5, PIXEL_Y, FACE_Z);
                 Matrix4f m = poseStack.last().pose();
@@ -223,7 +226,7 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
                     int g = (colour >> 8) & 0xFF;
                     int b = colour & 0xFF;
                     float x = pixelX(i);
-                    int cellA = (int) (alpha * CELL_ALPHA * 255);
+                    int cellA = (int) (alpha * blockEntity.getPixelDimmer(i) / 255f * CELL_ALPHA * 255);
                     addVertex(builder, m, normal, r, g, b, cellA, x - PIXEL_HALF, PIXEL_HALF, 0f);
                     addVertex(builder, m, normal, r, g, b, cellA, x + PIXEL_HALF, PIXEL_HALF, 0f);
                     addVertex(builder, m, normal, r, g, b, cellA, x + PIXEL_HALF, -PIXEL_HALF, 0f);
@@ -237,7 +240,7 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
                     int g = (colour >> 8) & 0xFF;
                     int b = colour & 0xFF;
                     float x = pixelX(i);
-                    int dotA = (int) (alpha * 255);
+                    int dotA = (int) (alpha * blockEntity.getPixelDimmer(i));
                     dots.vertex(m, x - DOT_HALF, DOT_HALF, -0.002f).color(r, g, b, dotA).endVertex();
                     dots.vertex(m, x + DOT_HALF, DOT_HALF, -0.002f).color(r, g, b, dotA).endVertex();
                     dots.vertex(m, x + DOT_HALF, -DOT_HALF, -0.002f).color(r, g, b, dotA).endVertex();
@@ -309,12 +312,11 @@ public class RGBbarRenderer extends ExtraLightsFixtureRenderer<RGBBarBlockEntity
     }
 
     /** Ramene la composante la plus forte a 255 : la couleur reste saturee, la luminosite va dans l'intensite. */
-    private static int normalise(int colour, int level) {
-        if (level <= 0) return 0;
-        int r = Math.min(255, ((colour >> 16) & 0xFF) * 255 / level);
-        int g = Math.min(255, ((colour >> 8) & 0xFF) * 255 / level);
-        int b = Math.min(255, (colour & 0xFF) * 255 / level);
-        return (r << 16) | (g << 8) | b;
+    private static int normalise(int colour) {
+        int r = (colour >> 16) & 0xFF, g = (colour >> 8) & 0xFF, b = colour & 0xFF;
+        int max = Math.max(r, Math.max(g, b));
+        if (max <= 0) return 0;
+        return (r * 255 / max << 16) | (g * 255 / max << 8) | (b * 255 / max);
     }
 
     @Override
