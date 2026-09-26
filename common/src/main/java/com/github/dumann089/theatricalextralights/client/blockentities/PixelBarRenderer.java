@@ -78,10 +78,19 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float PIXEL_BEAM_INTENSITY = 0.08f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
-    /** Lueur douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
-    private static final float DOT_GLOW_STRENGTH = 0.55f;
-    /** La cellule (lentille) autour de la LED s'eclaire faiblement. */
-    private static final float CELL_ALPHA = 0.30f;
+    /** Lueur large et douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
+    private static final float DOT_GLOW_STRENGTH = 0.65f;
+    /** Bloom serre autour de la LED : un halo vif, a une fraction du rayon de la lueur large. */
+    private static final float DOT_BLOOM_RADIUS_SCALE = 0.45f;
+    private static final float DOT_BLOOM_STRENGTH = 1.0f;
+    /**
+     * Coeur de la LED : un point plus petit tire vers le blanc, par-dessus le point colore. Une LED
+     * regardee en face sature au centre, la couleur reste sur le bord.
+     */
+    private static final float DOT_CORE_SCALE = 0.5f;
+    private static final float DOT_CORE_WHITEN = 0.6f;
+    /** La cellule (lentille) autour de la LED s'eclaire. */
+    private static final float CELL_ALPHA = 0.40f;
     /**
      * Faisceau plat : une nappe fine par pixel, a sa couleur, couchee dans l'axe du faisceau et qui
      * s'eteint sur la longueur configuree. Pas de cone.
@@ -186,6 +195,15 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                     dots.vertex(m, cx + d, cy + d, -0.002f).color(r, g, b, dotA).endVertex();
                     dots.vertex(m, cx + d, cy - d, -0.002f).color(r, g, b, dotA).endVertex();
                     dots.vertex(m, cx - d, cy - d, -0.002f).color(r, g, b, dotA).endVertex();
+                    // Coeur surexpose, additif par-dessus le point.
+                    int cr = r + (int) ((255 - r) * DOT_CORE_WHITEN);
+                    int cg = g + (int) ((255 - g) * DOT_CORE_WHITEN);
+                    int cb = b + (int) ((255 - b) * DOT_CORE_WHITEN);
+                    float c = d * DOT_CORE_SCALE;
+                    dots.vertex(m, cx - c, cy + c, -0.003f).color(cr, cg, cb, dotA).endVertex();
+                    dots.vertex(m, cx + c, cy + c, -0.003f).color(cr, cg, cb, dotA).endVertex();
+                    dots.vertex(m, cx + c, cy - c, -0.003f).color(cr, cg, cb, dotA).endVertex();
+                    dots.vertex(m, cx - c, cy - c, -0.003f).color(cr, cg, cb, dotA).endVertex();
                 }
                 poseStack.popPose();
 
@@ -200,9 +218,12 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                     int level = blockEntity.getPixelLevel(i);
                     if (level <= 0) continue;
                     Vector4f c = wm.transform(new Vector4f(s.x(s.along(i), 0f), s.y(s.along(i), 0f), 0f, 1f));
-                    StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera,
-                            new Vector3f(c.x, c.y, c.z), colour, s.glowRadius(),
-                            alpha * level / 255f * DOT_GLOW_STRENGTH);
+                    Vector3f centre = new Vector3f(c.x, c.y, c.z);
+                    // Deux disques : un bloom serre et vif contre la LED, puis la lueur large et douce.
+                    StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera, centre, colour,
+                            s.glowRadius() * DOT_BLOOM_RADIUS_SCALE, alpha * level / 255f * DOT_BLOOM_STRENGTH);
+                    StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera, centre, colour,
+                            s.glowRadius(), alpha * level / 255f * DOT_GLOW_STRENGTH);
                 }
 
                 if (!volumetric) {
