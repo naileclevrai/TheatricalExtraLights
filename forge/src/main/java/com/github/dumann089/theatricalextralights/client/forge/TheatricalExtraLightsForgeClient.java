@@ -2,6 +2,7 @@ package com.github.dumann089.theatricalextralights.client.forge;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLightsClient;
 import com.github.dumann089.theatricalextralights.client.ConfettiCannonClientSetup;
+import com.github.dumann089.theatricalextralights.client.ModKeybinds;
 import com.github.dumann089.theatricalextralights.client.ModShaders;
 import com.github.dumann089.theatricalextralights.client.gui.ExtraLightsSettingsScreen;
 import com.github.dumann089.theatricalextralights.client.render.beam.raymarch.SceneDepthCopy;
@@ -46,6 +47,9 @@ public final class TheatricalExtraLightsForgeClient {
     }
 
     public static void register(IEventBus modEventBus) {
+        // Avant RegisterKeyMappingsEvent : Architectury met la touche en file pour l'evenement au
+        // lieu de l'enregistrer apres coup avec un avertissement.
+        ModKeybinds.register();
         modEventBus.addListener(TheatricalExtraLightsForgeClient::clientSetup);
 
         // RegisterClientCommandsEvent et RenderLevelStageEvent sont diffuses sur le bus Forge,
