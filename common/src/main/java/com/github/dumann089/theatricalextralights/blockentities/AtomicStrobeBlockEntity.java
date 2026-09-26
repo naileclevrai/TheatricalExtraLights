@@ -34,10 +34,9 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity {
 
     // Mirror Strobe's focus → spread/distance mapping so both fixtures behave
     // consistently for the same focus value.
-    private static final float MIN_LIGHT_SPREAD = 0.35f;
-    private static final float CLOSE_EMISSION_DISTANCE = 0.75f;
-    private static final float FAR_EMISSION_DISTANCE = 7.5f;
-    private static final float MIN_LUMINANCE_SCALE = 0.22f;
+    private static final float MIN_LIGHT_SPREAD = 18.0f;
+    private static final float MAX_LIGHT_SPREAD = 40.0f;
+    private static final float EMISSION_DISTANCE = 12.0f;
 
     // Each bar segment contributes this multiple of an RGB zone's weight to
     // the emission mix — makes the bar visibly dominate over the colour cells.
@@ -196,20 +195,17 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity {
 
     @Override
     public int getLightLuminance() {
-        float scale = Mth.lerp(getNormalizedFocus(), MIN_LUMINANCE_SCALE, 1.0f);
-        float effective = getIntensity();
-        return (int) ((effective / 255f) * scale * 15f);
+        return (int) ((getIntensity() / 255f) * 15f);
     }
 
     @Override
     public float getLightSpread() {
-        float maxLightSpread = (float) getFixture().getLightRadius();
-        return Mth.lerp(getNormalizedFocus(), MIN_LIGHT_SPREAD, maxLightSpread);
+        return Mth.lerp(getNormalizedFocus(), MIN_LIGHT_SPREAD, MAX_LIGHT_SPREAD);
     }
 
     @Override
     public float getMaxLightDistance() {
-        return Mth.lerp(getNormalizedFocus(), CLOSE_EMISSION_DISTANCE, FAR_EMISSION_DISTANCE);
+        return EMISSION_DISTANCE;
     }
 
     private float getNormalizedFocus() {
