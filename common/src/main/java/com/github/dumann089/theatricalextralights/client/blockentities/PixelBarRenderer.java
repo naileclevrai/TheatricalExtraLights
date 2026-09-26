@@ -73,7 +73,13 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      * sienne. (Avec un facteur U egal a la largeur de la plage, la divergence aurait ete multipliee
      * elle aussi : neuf LED faisaient un eventail de vingt blocs au plafond.)
      */
-    private static final float PIXEL_HALF_ANGLE_DEG = 2.0f;
+    /**
+     * Quasi nul : le moteur trace un rayon max(rayon de base, distance x tan), une nappe garde donc
+     * sa largeur puis s'ouvre en cone la ou le second terme depasse le premier, avec un coude
+     * visible a mi-faisceau. Avec ce demi-angle le coude tombe a plus de cent blocs pour une LED
+     * seule et la nappe reste parallele sur toute sa longueur.
+     */
+    private static final float PIXEL_HALF_ANGLE_DEG = 0.05f;
     /**
      * Intensite de base d'une nappe, multipliee par le reglage « Bar beam » de la config. Une nappe
      * n'a que 0.08 bloc d'epaisseur : un rayon y traverse bien moins de haze que dans un cone rond,
@@ -100,8 +106,8 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      * s'eteint sur la longueur configuree. Pas de cone.
      */
     private static final float FLAT_BEAM_ALPHA = 0.28f;
-    /** Demi-largeur de la nappe a son extremite, en multiple de la demi-cellule. */
-    private static final float FLAT_BEAM_SPREAD = 2.2f;
+    /** Demi-largeur de la nappe plate a son extremite, en multiple de la demi-cellule : 1 = parallele. */
+    private static final float FLAT_BEAM_SPREAD = 1.0f;
     /** Demi-epaisseur de la nappe : deux feuilles rapprochees, pour un peu de corps de profil. */
     private static final float FLAT_BEAM_HALF_THICKNESS = 0.015f;
 
