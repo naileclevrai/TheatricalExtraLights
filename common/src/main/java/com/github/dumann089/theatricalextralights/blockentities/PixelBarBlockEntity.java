@@ -18,8 +18,9 @@ import java.util.List;
  * <p>Deux personnalites : la classique (index 0 : dimmer + un RGB pour toute la barre, plus pan et
  * tilt sur la barre mobile) et le mode pixel (index 1 : un dimmer et un RGB par pixel, sans dimmer
  * general, precedes des canaux d'en-tete de la sous-classe, pan/tilt par exemple). Dans les deux
- * cas {@code red/green/blue} portent la couleur moyenne et {@code intensity} le niveau de la barre
- * (en mode pixel : le dimmer du pixel le plus fort), pour la lumiere dynamique et les outils qui ne
+ * cas {@code red/green/blue} portent la couleur de la barre (en mode pixel : celle du groupe de
+ * pixels dominant) et {@code intensity} son niveau (en mode pixel : le dimmer du pixel le plus
+ * fort), pour la lumiere dynamique et les outils qui ne
  * connaissent qu'une couleur ; le rendu par pixel lit {@link #getPixelColour(int)} et
  * {@link #getPixelDimmer(int)}.
  */
@@ -161,29 +162,36 @@ public abstract class PixelBarBlockEntity extends ExtraLightsLightBlockEntity im
             for (int i = 0; i < pixels.length; i++) {
                 pixels[i] = convertByteToInt(ourValues[base + i]);
             }
-            // Pas de dimmer general : la barre prend le dimmer du pixel le plus fort, et sa couleur
-            // est la moyenne des couleurs brutes ponderee par la luminosite de chaque pixel. Une barre
-            // unie donne ainsi la meme lumiere dynamique qu'en mode classique.
+            // Pas de dimmer general : la barre prend le dimmer du pixel le plus fort. Sa couleur,
+            // pour la lumiere dynamique, est celle du groupe de pixels de meme couleur qui pese le
+            // plus (somme des niveaux) : une moyenne de couleurs differentes tirerait vers le blanc,
+            // et un projecteur de scene doit garder une lumiere saturee meme sur un look multicolore.
+            // Une barre unie donne ainsi la meme lumiere dynamique qu'en mode classique.
             int maxDim = 0;
-            long r = 0, g = 0, b = 0, weight = 0;
+            int bestColour = 0;
+            long bestWeight = 0;
             for (int p = 0; p < pixelCount; p++) {
                 maxDim = Math.max(maxDim, getPixelDimmer(p));
-                int c = getPixelColour(p);
-                int pr = (c >> 16) & 0xFF, pg = (c >> 8) & 0xFF, pb = c & 0xFF;
-                int w = getPixelLevel(p);
-                r += (long) pr * w;
-                g += (long) pg * w;
-                b += (long) pb * w;
-                weight += w;
+                int level = getPixelLevel(p);
+                if (level <= 0) {
+                    continue;
+                }
+                int colour = getPixelColour(p);
+                long weight = 0;
+                for (int q = 0; q < pixelCount; q++) {
+                    if (getPixelColour(q) == colour) {
+                        weight += getPixelLevel(q);
+                    }
+                }
+                if (weight > bestWeight) {
+                    bestWeight = weight;
+                    bestColour = colour;
+                }
             }
             intensity = maxDim;
-            if (weight > 0) {
-                red = (int) (r / weight);
-                green = (int) (g / weight);
-                blue = (int) (b / weight);
-            } else {
-                red = green = blue = 0;
-            }
+            red = (bestColour >> 16) & 0xFF;
+            green = (bestColour >> 8) & 0xFF;
+            blue = bestColour & 0xFF;
         } else {
             consumeClassic(ourValues);
         }
