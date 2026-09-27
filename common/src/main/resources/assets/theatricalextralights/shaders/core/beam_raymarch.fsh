@@ -512,13 +512,18 @@ void main() {
     float marchLen = tExit - tEnter;
 
     int steps = clamp(StepCount, 4, 48);
-    // Close-up LOD: if the cone starts near the camera it fills the view.
-    // Fewer samples, larger dt — single-scatter energy stays the same.
-    float closeLod = mix(0.28, 1.0, smoothstep(0.75, 14.0, tEnter));
-    float longLod = mix(1.0, 0.55, smoothstep(8.0, 32.0, marchLen));
-    float lod = min(closeLod, longLod);
-    int minSteps = tEnter < 1.5 ? 3 : 4;
-    steps = max(minSteps, int(float(steps) * lod + 0.5));
+    if (ColorRamp < 0.5) {
+        // Close-up LOD: if the cone starts near the camera it fills the view.
+        // Fewer samples, larger dt — single-scatter energy stays the same.
+        float closeLod = mix(0.28, 1.0, smoothstep(0.75, 14.0, tEnter));
+        float longLod = mix(1.0, 0.55, smoothstep(8.0, 32.0, marchLen));
+        float lod = min(closeLod, longLod);
+        int minSteps = tEnter < 1.5 ? 3 : 4;
+        steps = max(minSteps, int(float(steps) * lod + 0.5));
+    }
+    // Nappe de barre : la marche ne traverse que l'epaisseur de la nappe, elle est courte de toute
+    // facon. Le LOD de proximite y dessinait un cercle net autour du regard, la ou le nombre de pas
+    // change et la texture de la haze avec lui.
 
     float dt = marchLen / float(steps);
     float t = tEnter + dt * ign(gl_FragCoord.xy);
