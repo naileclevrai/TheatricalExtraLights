@@ -75,22 +75,27 @@ public final class BlinderRenderHelper {
         }
     }
 
-    /** Le verre de la lampe, tire vers le blanc : une lampe a pleine puissance brule au centre. */
-    private static final float LAMP_WHITEN = 0.5f;
+    /** Le verre de la lampe, tire vers le blanc : une lampe de blinder crame l'image. */
+    private static final float LAMP_WHITEN = 0.7f;
     /** Disque de la lampe elle-meme (ronde, tournee vers la camera), en multiple du demi-format de la lentille. */
-    private static final float LAMP_DISC_RADIUS = 1.4f;
-    private static final float LAMP_DISC_STRENGTH = 1.0f;
-    /** Bloom serre autour de chaque lampe. */
-    private static final float LAMP_BLOOM_RADIUS = 3.2f;
-    private static final float LAMP_BLOOM_STRENGTH = 0.7f;
-    /** Lueur de l'ensemble des lampes dans la haze, en multiple du demi-format de la rangee, dans la couleur de l'appareil. */
-    private static final float ARRAY_GLOW_RADIUS = 2.5f;
-    private static final float ARRAY_GLOW_STRENGTH = 0.5f;
-    private static final float ARRAY_HAZE_RADIUS = 5.0f;
-    private static final float ARRAY_HAZE_STRENGTH = 0.2f;
+    private static final float LAMP_DISC_RADIUS = 2.0f;
+    /**
+     * Couches de bloom par lampe : {rayon en demi-formats de lentille, force}. Le disque doux
+     * tombe vite (alpha en (1 - r/R)^2.4), il en faut plusieurs, de plus en plus larges, pour la
+     * longue queue d'un vrai bloom : la derniere couvre trois blocs autour d'une lentille de 4/16.
+     */
+    private static final float[][] LAMP_BLOOM_LAYERS = {
+            {1.6f, 1.0f}, {3.5f, 0.95f}, {7.0f, 0.8f}, {14.0f, 0.55f}, {28.0f, 0.3f}
+    };
+    /** Couches de lueur de la rangee entiere dans la haze : {rayon en demi-formats de rangee, force}. */
+    private static final float[][] ARRAY_GLOW_LAYERS = {
+            {2.5f, 0.9f}, {5.0f, 0.6f}, {10.0f, 0.35f}
+    };
     /** Part de la lueur d'ensemble : une lampe seule, puis huit lampes. */
     private static final float ARRAY_SHARE_ONE_LAMP = 0.6f;
     private static final float ARRAY_SHARE_EIGHT_LAMPS = 1.0f;
+    /** Le bloom suit le niveau avec une courbe douce : a moitie de dimmer, encore deux tiers du bloom. */
+    private static final float BLOOM_LEVEL_EXPONENT = 0.6f;
 
     private BlinderRenderHelper() {
     }
@@ -112,6 +117,7 @@ public final class BlinderRenderHelper {
             return;
         }
         float level = Math.min(1f, intensity / 255f);
+        float bloom = (float) Math.pow(level, BLOOM_LEVEL_EXPONENT);
         int color = blockEntity.getColour();
         int hot = whiten(color, LAMP_WHITEN);
         int hr = (hot >> 16) & 0xFF;
@@ -130,23 +136,28 @@ public final class BlinderRenderHelper {
                 viewPose.popPose();
 
                 Vector3f centre = worldCentre(headTransform, lamp);
+                // La lampe : un disque brulant, blanc au coeur.
                 StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, hot,
-                        lampRadius * LAMP_DISC_RADIUS, level * LAMP_DISC_STRENGTH);
-                StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, color,
-                        lampRadius * LAMP_BLOOM_RADIUS, level * LAMP_BLOOM_STRENGTH);
+                        lampRadius * LAMP_DISC_RADIUS, level);
+                // Le bloom, en couches de plus en plus larges et pales, dans la couleur de la lampe.
+                for (float[] layer : LAMP_BLOOM_LAYERS) {
+                    StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, color,
+                            lampRadius * layer[0], bloom * layer[1]);
+                }
             }
         }
 
-        // La rangee entiere baigne dans sa propre couleur : les lampes voisines fondent en un pave.
+        // La rangee entiere baigne dans sa propre couleur : les lampes voisines fondent en un pave
+        // et la haze autour de l'appareil s'allume.
         StrobeVisualEffects.Face array = lamps.array();
         Vector3f arrayCentre = worldCentre(headTransform, array);
         float arrayRadius = Math.max(array.halfW(), array.halfH());
         float share = ARRAY_SHARE_ONE_LAMP + (ARRAY_SHARE_EIGHT_LAMPS - ARRAY_SHARE_ONE_LAMP)
                 * Math.min(1f, (lamps.count() - 1) / 7f);
-        StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
-                arrayRadius * ARRAY_GLOW_RADIUS, level * share * ARRAY_GLOW_STRENGTH);
-        StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
-                arrayRadius * ARRAY_HAZE_RADIUS, level * share * ARRAY_HAZE_STRENGTH);
+        for (float[] layer : ARRAY_GLOW_LAYERS) {
+            StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
+                    arrayRadius * layer[0], bloom * share * layer[1]);
+        }
     }
 
     /** Centre d'une face dans le repere camera (sans la vue), la ou les disques se dessinent. */
