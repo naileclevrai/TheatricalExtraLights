@@ -90,10 +90,32 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
 
         float plate = be.plateLevel(partialTicks, window);
         if (plate > 0f) {
-            float zoneW = (LED_X1 - LED_X0) / 4f;
-            for (int i = 0; i < 4; i++) {
-                zoneQuad(vc, m, be, i, LED_X0 + i * zoneW, LED_X0 + (i + 1) * zoneW, TOP_Y0, TOP_Y1, plate);
-                zoneQuad(vc, m, be, 4 + i, LED_X0 + i * zoneW, LED_X0 + (i + 1) * zoneW, BOT_Y0, BOT_Y1, plate);
+            // Grille de pixels, avec un joint sombre entre eux pour lire la matrice.
+            float pw = (LED_X1 - LED_X0) / AtomicStrobeBlockEntity.PIXEL_COLS;
+            float gapX = pw * 0.08f;
+            for (int plateIdx = 0; plateIdx < 2; plateIdx++) {
+                float y0 = plateIdx == 0 ? TOP_Y0 : BOT_Y0;
+                float y1 = plateIdx == 0 ? TOP_Y1 : BOT_Y1;
+                float ph = (y1 - y0) / AtomicStrobeBlockEntity.PIXEL_ROWS;
+                float gapY = ph * 0.1f;
+                for (int row = 0; row < AtomicStrobeBlockEntity.PIXEL_ROWS; row++) {
+                    float top = y1 - row * ph;
+                    for (int col = 0; col < AtomicStrobeBlockEntity.PIXEL_COLS; col++) {
+                        int p = AtomicStrobeBlockEntity.pixelIndex(plateIdx, row, col);
+                        float level = plate * be.pixelDim(p) / 255f;
+                        if (level <= 0f) {
+                            continue;
+                        }
+                        int r = Math.round(be.pixelRed(p) * level);
+                        int g = Math.round(be.pixelGreen(p) * level);
+                        int b = Math.round(be.pixelBlue(p) * level);
+                        if ((r | g | b) == 0) {
+                            continue;
+                        }
+                        float x0 = LED_X0 + col * pw;
+                        quad(vc, m, x0 + gapX, top - ph + gapY, x0 + pw - gapX, top - gapY, r, g, b);
+                    }
+                }
             }
         }
         float segW = (LED_X1 - LED_X0) / AtomicStrobeBlockEntity.WHITE_SEGMENT_COUNT;
@@ -105,17 +127,6 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
             int w = Math.min(255, Math.round(level * 255f));
             quad(vc, m, LED_X0 + i * segW, BAR_Y0, LED_X0 + (i + 1) * segW, BAR_Y1, w, w, w);
         }
-    }
-
-    private static void zoneQuad(VertexConsumer vc, Matrix4f m, AtomicStrobeBlockEntity be, int zone,
-                                 float x0, float x1, float y0, float y1, float level) {
-        int r = Math.round(be.getZoneRed(zone) * level);
-        int g = Math.round(be.getZoneGreen(zone) * level);
-        int b = Math.round(be.getZoneBlue(zone) * level);
-        if ((r | g | b) == 0) {
-            return;
-        }
-        quad(vc, m, x0, y0, x1, y1, r, g, b);
     }
 
     private static void quad(VertexConsumer vc, Matrix4f m, float x0, float y0, float x1, float y1, int r, int g, int b) {

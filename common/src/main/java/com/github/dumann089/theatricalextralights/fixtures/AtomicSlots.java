@@ -30,6 +30,22 @@ public final class AtomicSlots {
         return new DMXSlot("Bar Segment " + index, RDMSlotType.ST_PRIMARY, RDMSlotID.SD_INTENSITY);
     }
 
+    public static DMXSlot pixelDim(int pixel) {
+        return new DMXSlot("Pixel " + pixel + " Dim", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_INTENSITY);
+    }
+
+    public static DMXSlot pixelRed(int pixel) {
+        return new DMXSlot("Pixel " + pixel + " Red", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_COLOR_SUB_CYAN);
+    }
+
+    public static DMXSlot pixelGreen(int pixel) {
+        return new DMXSlot("Pixel " + pixel + " Green", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_COLOR_SUB_MAGENTA);
+    }
+
+    public static DMXSlot pixelBlue(int pixel) {
+        return new DMXSlot("Pixel " + pixel + " Blue", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_COLOR_SUB_YELLOW);
+    }
+
     public static DMXSlot zoneRed(int zone) {
         return new DMXSlot("Zone " + zone + " Red", RDMSlotType.ST_PRIMARY, RDMSlotID.SD_COLOR_SUB_CYAN);
     }

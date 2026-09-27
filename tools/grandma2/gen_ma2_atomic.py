@@ -6,6 +6,7 @@ Atomic Strobe (tube of nine white segments between two plates of four RGB zones)
 - 8CH Aura       : 4CH + Aura sub-fixture (Dim, R, G, B)                (Atomic 3000 LED layout)
 - 10CH Compressed: 4CH + Plate sub-fixture (Dim, Duration, Rate, R, G, B)
 - 40CH Pixel     : 4CH + 9 Segment sub-fixtures (Dim) + Plate (Dim, Duration, Rate) + 8 Zone sub-fixtures (R, G, B)
+- 400CH PixelMap : 4CH + 9 Segment sub-fixtures (Dim) + Plate (Dim, Duration, Rate) + 96 Pixel sub-fixtures (Dim, R, G, B)
 
 Atomic Tilt (strobe head on a tilting yoke):
 - 6CH Atomic     : Dim, Flash Duration, Flash Rate, Effects, Focus, Tilt
@@ -191,6 +192,30 @@ def strobe_40() -> str:
     return fixture_type(STROBE_NAME, "TEL-Atom40", "40CH Pixel", info, modules, instances)
 
 
+def strobe_400() -> str:
+    info = ("Theatrical Extra Lights Atomic Strobe, 400-channel pixel map personality: Dim, Flash Duration, Flash Rate, "
+            "Effects on the main fixture, Segment sub-fixtures 1.1 to 1.9 (Dim each, left to right), Plate 1.10 (Dim, "
+            "Duration, Rate; rate 0 = continuous) and Pixel sub-fixtures 1.11 to 1.106 (Dim, Red, Green, Blue each): "
+            "pixels 1-48 on the top plate, 49-96 on the bottom plate, each plate 12 columns x 4 rows, row by row from "
+            f"the top, left to right. {EFFECTS_TXT} Requires mod personality \"400-Channel Pixel Map (Bar + 96 Pixels)\".")
+    modules = [
+        module(0, "MAIN", BODY, atomic_bar()),
+        module(1, "SEGMENT", SEGMENT, [dimmer(0, 1)]),
+        module(2, "PLATE", PLATE, [dimmer(0, 1), duration(1, 2), rate(2, 3, "Open", "1")], "120"),
+        module(3, "PIXEL", (0.033, 0.022), [dimmer(0, 1)] + rgb_channels(1, 2), "120"),
+    ]
+    instances = [instance(0, 1, 0, "Main")]
+    for s in range(9):
+        instances.append(instance(1 + s, 5 + s, 1, f"Segment {s + 1}"))
+    instances.append(instance(10, 14, 2, "Plate"))
+    for p in range(96):
+        plate = "T" if p < 48 else "B"
+        row = (p % 48) // 12 + 1
+        col = p % 12 + 1
+        instances.append(instance(11 + p, 17 + 4 * p, 3, f"Px {plate}{row}-{col}"))
+    return fixture_type(STROBE_NAME, "TEL-Atom400", "400CH PixelMap", info, modules, instances)
+
+
 def tilt_6() -> str:
     info = ("Theatrical Extra Lights Atomic Tilt, 6-channel Atomic personality: Dim, Flash Duration, Flash Rate, "
             f"Effects, Focus, Tilt (white head). {EFFECTS_TXT} Requires mod personality \"6-Channel Atomic + Focus + Tilt\".")
@@ -212,6 +237,7 @@ FILES = {
     "nailec@theatrical_atomic_strobe@8ch_aura.xml": strobe_8,
     "nailec@theatrical_atomic_strobe@10ch_compressed.xml": strobe_10,
     "nailec@theatrical_atomic_strobe@40ch_pixel.xml": strobe_40,
+    "nailec@theatrical_atomic_strobe@400ch_pixelmap.xml": strobe_400,
     "nailec@theatrical_atomic_tilt@6ch_atomic.xml": tilt_6,
     "nailec@theatrical_atomic_tilt@9ch_atomic_rgb.xml": tilt_9,
 }
