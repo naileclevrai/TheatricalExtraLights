@@ -22,8 +22,8 @@ public final class StrobeVisualEffects {
         /** Zone LED de l'Atomic Strobe, cadre plastique exclu (voir AtomicStrobeRenderer). */
         public static final Face ATOMIC = new Face(8.0f / 16f, 6.985f / 16f, 11.55f / 16f,
                 6.33f / 16f, 3.235f / 16f, true);
-        /** Face de la tete de l'Atomic Tilt, dans le repere prepare par son renderer (tilt applique). */
-        public static final Face ATOMIC_TILT = new Face(0.509f, 0.573f, 0.346f, 0.3828f, 0.25f, true);
+        /** Face de la tete de l'Atomic Tilt, dans le repere prepare par son renderer (tilt applique) : l'avant est -Z. */
+        public static final Face ATOMIC_TILT = new Face(0.509f, 0.573f, 0.346f, 0.3828f, 0.25f, false);
 
         /** Place la pose au centre de la face, -Z sortant vers l'avant du projecteur. */
         public void apply(PoseStack poseStack) {
