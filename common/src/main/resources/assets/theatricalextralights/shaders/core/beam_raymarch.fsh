@@ -760,7 +760,14 @@ void main() {
             + zDist * BeamDirW
             + (u * wScale) * AxisUW
             + (v * hScale) * AxisVW;
-        float shadow = shadowFactor(wposS, BeamOriginW, VoxelCell * 0.5);
+        // Nappe de barre : la source est une ligne, pas un point. L'ombre se cherche vers le point de
+        // la barre juste derriere l'echantillon ; vers le centre de la nappe, le trajet traverserait
+        // les blocs des barres voisines de la chaine et noircirait les deux bouts.
+        vec3 lightW = BeamOriginW;
+        if (ColorRamp > 0.5) {
+            lightW = BeamOriginW + (u * wScale) * AxisUW;
+        }
+        float shadow = shadowFactor(wposS, lightW, VoxelCell * 0.5);
 
         vec3 radiance =
             tint * rampTint * edgeU *
