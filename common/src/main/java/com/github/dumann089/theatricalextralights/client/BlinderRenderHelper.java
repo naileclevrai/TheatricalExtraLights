@@ -99,6 +99,12 @@ public final class BlinderRenderHelper {
     /** Part de l'eblouissement et de la couronne : une lampe seule, puis huit lampes. */
     private static final float ARRAY_SHARE_ONE_LAMP = 0.6f;
     private static final float ARRAY_SHARE_EIGHT_LAMPS = 1.0f;
+    /**
+     * Les disques sont tires vers la camera : poses sur le plan des lentilles, ils passent derriere
+     * les parties de la carrosserie plus proches de l'oeil (dessous, yoke) et l'appareil reste
+     * visible au milieu de son propre eblouissement.
+     */
+    private static final float TOWARD_CAMERA = 1.0f;
     /** L'eblouissement tombe vite avec le dimmer (a moitie, on revoit l'appareil), la couronne lentement. */
     private static final float GLARE_LEVEL_EXPONENT = 1.2f;
     private static final float HAZE_LEVEL_EXPONENT = 0.6f;
@@ -143,7 +149,7 @@ public final class BlinderRenderHelper {
                 StrobeVisualEffects.renderFace(bufferSource, viewPose, lamp, hr, hg, hb, a);
                 viewPose.popPose();
 
-                Vector3f centre = worldCentre(headTransform, lamp);
+                Vector3f centre = towardCamera(worldCentre(headTransform, lamp));
                 StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, hot,
                         lampRadius * LAMP_DISC_RADIUS, level);
                 StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, color,
@@ -152,7 +158,7 @@ public final class BlinderRenderHelper {
         }
 
         StrobeVisualEffects.Face array = lamps.array();
-        Vector3f arrayCentre = worldCentre(headTransform, array);
+        Vector3f arrayCentre = towardCamera(worldCentre(headTransform, array));
         float arrayRadius = Math.max(array.halfW(), array.halfH());
         float share = ARRAY_SHARE_ONE_LAMP + (ARRAY_SHARE_EIGHT_LAMPS - ARRAY_SHARE_ONE_LAMP)
                 * Math.min(1f, (lamps.count() - 1) / 7f);
@@ -166,6 +172,16 @@ public final class BlinderRenderHelper {
             StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
                     arrayRadius * layer[0], haze * share * layer[1]);
         }
+    }
+
+    /** Rapproche un point de la camera (repere camera) pour que le disque passe devant la carrosserie. */
+    private static Vector3f towardCamera(Vector3f point) {
+        float dist = point.length();
+        if (dist < 1.0e-3f) {
+            return point;
+        }
+        float pull = Math.min(TOWARD_CAMERA, dist * 0.5f);
+        return new Vector3f(point).mul(1f - pull / dist);
     }
 
     /** Centre d'une face dans le repere camera (sans la vue), la ou les disques se dessinent. */
