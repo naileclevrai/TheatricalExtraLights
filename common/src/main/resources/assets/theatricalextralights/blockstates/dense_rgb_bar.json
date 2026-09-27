@@ -1,5 +1,5 @@
 {
   "variants": {
-    "": {"model":  "theatricalextralights:block/ledbar/ledbar_whole"}
+    "": {"model":  "theatricalextralights:block/ledbar/ledbar_dense_whole"}
   }
 }
