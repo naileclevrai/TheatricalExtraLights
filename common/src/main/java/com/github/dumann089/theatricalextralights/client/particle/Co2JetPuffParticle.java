@@ -21,9 +21,9 @@ public class Co2JetPuffParticle extends Co2FogParticle {
     /** @param pressure 0..1, intensite DMX : a basse pression le panache reste plus fin. */
     Co2JetPuffParticle(ClientLevel level, Vec3 pos, Vec3 velocity, RandomSource random, float pressure) {
         super(level, pos, velocity, spriteSet, random,
-                0.16f + random.nextFloat() * 0.10f,
-                (0.85f + random.nextFloat() * 0.55f) * (0.7f + 0.3f * pressure),
-                0.14f + random.nextFloat() * 0.08f,
+                0.08f + random.nextFloat() * 0.04f,
+                (0.45f + random.nextFloat() * 0.25f) * (0.7f + 0.3f * pressure),
+                0.12f + random.nextFloat() * 0.06f,
                 DRAG,
                 TURBULENCE,
                 28 + random.nextInt(16));

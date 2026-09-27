@@ -30,6 +30,8 @@ abstract class Co2FogParticle extends TextureSheetParticle {
     private static final float CAMERA_FADE_START = 0.3f;
     private static final float CAMERA_FADE_LENGTH = 1.1f;
     private static final float SINK = 0.0010f;
+    /** Etirement du sprite le long de la vitesse : a 0.85 bloc/tick la trainee fait 4 fois sa largeur. */
+    private static final float STRETCH_PER_SPEED = 3.5f;
     /** Contre une surface, la fumee s'etale et se dilue vite. */
     private static final float SURFACE_FADE = 0.88f;
 
@@ -119,7 +121,8 @@ abstract class Co2FogParticle extends TextureSheetParticle {
         }
 
         roll += spin * (1f - 0.5f * life);
-        float grow = 1f - (1f - life) * (1f - life);
+        // La taille suit la distance parcourue (1 - drag^age), donc le cone : fin a la buse, large au bout.
+        float grow = 1f - (float) Math.pow(drag, age);
         quadSize = Mth.lerp(grow, startSize, peakSize);
         float fadeIn = Math.min(1f, age / 2f);
         float fadeOut = 1f;
@@ -181,20 +184,73 @@ abstract class Co2FogParticle extends TextureSheetParticle {
         }
     }
 
+    /**
+     * Le sprite est etire le long de sa vitesse : le gaz rapide se lit en trainees, pas en boules.
+     * La trainee raccourcit quand le jet est vu dans l'axe et redevient ronde quand la volute ralentit.
+     */
     @Override
     public void render(VertexConsumer buffer, Camera camera, float partialTicks) {
         Vec3 cam = camera.getPosition();
-        double dx = Mth.lerp(partialTicks, xo, x) - cam.x;
-        double dy = Mth.lerp(partialTicks, yo, y) - cam.y;
-        double dz = Mth.lerp(partialTicks, zo, z) - cam.z;
-        float distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float px = (float) (Mth.lerp(partialTicks, xo, x) - cam.x);
+        float py = (float) (Mth.lerp(partialTicks, yo, y) - cam.y);
+        float pz = (float) (Mth.lerp(partialTicks, zo, z) - cam.z);
+        float distance = Mth.sqrt(px * px + py * py + pz * pz);
         float fade = Mth.clamp((distance - CAMERA_FADE_START) / CAMERA_FADE_LENGTH, 0f, 1f);
         if (fade <= 0f) {
             return;
         }
-        float saved = alpha;
-        alpha = saved * fade;
-        super.render(buffer, camera, partialTicks);
-        alpha = saved;
+
+        float vx = (float) xd;
+        float vy = (float) yd;
+        float vz = (float) zd;
+        float speed = Mth.sqrt(vx * vx + vy * vy + vz * vz);
+        float inverseDistance = 1f / Math.max(distance, 1.0e-4f);
+        float wx = px * inverseDistance;
+        float wy = py * inverseDistance;
+        float wz = pz * inverseDistance;
+        // Vitesse projetee sur le plan de l'ecran.
+        float ax = 0f;
+        float ay = 0f;
+        float az = 0f;
+        float projected = 0f;
+        if (speed > 1.0e-4f) {
+            float dot = (vx * wx + vy * wy + vz * wz) / speed;
+            ax = vx / speed - wx * dot;
+            ay = vy / speed - wy * dot;
+            az = vz / speed - wz * dot;
+            projected = Mth.sqrt(ax * ax + ay * ay + az * az);
+        }
+        float stretch = 1f + STRETCH_PER_SPEED * speed * projected;
+        if (stretch < 1.05f) {
+            float saved = alpha;
+            alpha = saved * fade;
+            super.render(buffer, camera, partialTicks);
+            alpha = saved;
+            return;
+        }
+        ax /= projected;
+        ay /= projected;
+        az /= projected;
+        // Cote = vue x axe, deja unitaire (vue et axe sont orthogonaux et unitaires).
+        float sx = wy * az - wz * ay;
+        float sy = wz * ax - wx * az;
+        float sz = wx * ay - wy * ax;
+
+        float half = getQuadSize(partialTicks);
+        float along = half * stretch;
+        float a = alpha * fade / Mth.sqrt(stretch);
+        int light = getLightColor(partialTicks);
+        float u0 = getU0();
+        float u1 = getU1();
+        float v0 = getV0();
+        float v1 = getV1();
+        vertex(buffer, px - ax * along - sx * half, py - ay * along - sy * half, pz - az * along - sz * half, u1, v1, a, light);
+        vertex(buffer, px - ax * along + sx * half, py - ay * along + sy * half, pz - az * along + sz * half, u1, v0, a, light);
+        vertex(buffer, px + ax * along + sx * half, py + ay * along + sy * half, pz + az * along + sz * half, u0, v0, a, light);
+        vertex(buffer, px + ax * along - sx * half, py + ay * along - sy * half, pz + az * along - sz * half, u0, v1, a, light);
+    }
+
+    private void vertex(VertexConsumer buffer, float x, float y, float z, float u, float v, float a, int light) {
+        buffer.vertex(x, y, z).uv(u, v).color(rCol, gCol, bCol, a).uv2(light).endVertex();
     }
 }

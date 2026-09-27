@@ -18,8 +18,8 @@ import org.joml.Vector3f;
  */
 @Environment(EnvType.CLIENT)
 public final class Flow2JetParticleSpawner {
-    private static final int PUFF_BASE = 8;
-    private static final int CORE_BASE = 5;
+    private static final int PUFF_BASE = 12;
+    private static final int CORE_BASE = 7;
     /** Demi-angle du cone de volutes ; le coeur reste serre. */
     private static final float PUFF_CONE_DEGREES = 6.0f;
     private static final float CORE_CONE_DEGREES = 1.6f;
@@ -27,7 +27,7 @@ public final class Flow2JetParticleSpawner {
     private static final float SPEED_MIN = 0.35f;
     private static final float SPEED_RANGE = 0.50f;
     private static final int BURST_TICKS = 3;
-    private static final float BURST_GAIN = 1.6f;
+    private static final float BURST_GAIN = 1.25f;
 
     private Flow2JetParticleSpawner() {
     }
