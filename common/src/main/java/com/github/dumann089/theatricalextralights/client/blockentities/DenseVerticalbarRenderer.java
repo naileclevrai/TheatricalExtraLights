@@ -21,7 +21,7 @@ public class DenseVerticalbarRenderer extends PixelBarRenderer<DenseVerticalbarB
     // Meme barre que la Vertical RGB Bar (46/16 de haut), 46 LED : un pixel par 1/16 de bloc,
     // le premier en bas, chacun sur 80 % de son pas.
     private static final float PITCH = 46f / 16f / DenseVerticalbarBlockEntity.PIXEL_COUNT;
-    private static final Strip STRIP = new Strip(true, -23f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, 2f / 16f,
+    private static final Strip STRIP = new Strip(true, -23f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, PITCH * 0.4f,
             PITCH * 0.3f, 0.5f, 0.5f, 0.796f);
 
     public DenseVerticalbarRenderer(BlockEntityRendererProvider.Context context) {

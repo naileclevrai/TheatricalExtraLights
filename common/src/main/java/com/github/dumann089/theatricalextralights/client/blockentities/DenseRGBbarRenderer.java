@@ -21,7 +21,7 @@ public class DenseRGBbarRenderer extends PixelBarRenderer<DenseRGBBarBlockEntity
     // Meme barre que la RGB Bar (cellules de x=-14 a x=30), 46 LED sur 44/16 : pas de 44/16/46,
     // chaque pixel sur 80 % de son pas, le premier centre a une demi-pas du bord gauche.
     private static final float PITCH = 44f / 16f / DenseRGBBarBlockEntity.PIXEL_COUNT;
-    private static final Strip STRIP = new Strip(false, -22f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, 2f / 16f,
+    private static final Strip STRIP = new Strip(false, -22f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, PITCH * 0.4f,
             PITCH * 0.3f, 0.5f, 7.9375f / 16f, 0.38f);
 
     public DenseRGBbarRenderer(BlockEntityRendererProvider.Context context) {

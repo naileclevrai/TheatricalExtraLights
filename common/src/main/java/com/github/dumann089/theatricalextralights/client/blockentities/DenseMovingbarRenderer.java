@@ -21,7 +21,7 @@ public class DenseMovingbarRenderer extends PixelBarRenderer<DenseMovingbarBlock
     // Meme tete que la Moving Bar (cellules de x=-4.1 a x=19.9, 24/16), 24 LED : un pixel par 1/16
     // de bloc, chacun sur 80 % de son pas.
     private static final float PITCH = 24f / 16f / DenseMovingbarBlockEntity.PIXEL_COUNT;
-    private static final Strip STRIP = new Strip(false, -12f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, 1.5f / 16f,
+    private static final Strip STRIP = new Strip(false, -12f / 16f + PITCH / 2f, PITCH, PITCH * 0.4f, PITCH * 0.4f,
             PITCH * 0.3f, 7.9f / 16f, 14.75f / 16f, 0.318f);
 
     public DenseMovingbarRenderer(BlockEntityRendererProvider.Context context) {
