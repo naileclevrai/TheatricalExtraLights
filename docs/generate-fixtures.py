@@ -151,6 +151,13 @@ P_RGBBAR_PIXEL = P("36-Channel Pixel Mode (9x Dim/RGB)", _pixel_channels(9),
                    _pixel_note(9, "from left to right, seen from the front of the bar"))
 P_VBAR_PIXEL = P("36-Channel Pixel Mode (9x Dim/RGB)", _pixel_channels(9),
                  _pixel_note(9, "from the bottom to the top of the bar as it stands"))
+P_DRGBBAR_PIXEL = P("184-Channel Pixel Mode (46x Dim/RGB)", _pixel_channels(46),
+                    _pixel_note(46, "from left to right, seen from the front of the bar"))
+P_DVBAR_PIXEL = P("184-Channel Pixel Mode (46x Dim/RGB)", _pixel_channels(46),
+                  _pixel_note(46, "from the bottom to the top of the bar as it stands"))
+P_DMBAR_PIXEL = P("98-Channel Pixel Mode (Pan, Tilt + 24x Dim/RGB)", [PAN, TILT] + _pixel_channels(24),
+                  _pixel_note(24, "from left to right, seen from the front of the head")
+                  + " Pan and tilt sit on the main fixture, channels 1 and 2, with the same ranges as the 7-Channel Mode; there is no focus channel.")
 P_MBAR_PIXEL = P("34-Channel Pixel Mode (Pan, Tilt + 8x Dim/RGB)", [PAN, TILT] + _pixel_channels(8),
                  _pixel_note(8, "from left to right, seen from the front of the head")
                  + " Pan and tilt sit on the main fixture, channels 1 and 2, with the same ranges as the 7-Channel Mode; there is no focus channel.")
@@ -230,6 +237,8 @@ for id_, name, intro in [
     FIXTURES.append(F(id_, name, "Moving heads & beams", intro, [P_7CH_ONLY], MH_NOTES))
 FIXTURES.append(F("moving_bar", "Moving Bar", "Moving heads & beams", "Tilting LED bar with eight pixels and a wash texture.",
                   [P_7CH_ONLY, P_MBAR_PIXEL], MH_NOTES))
+FIXTURES.append(F("dense_moving_bar", "Dense Moving RGB Bar", "Moving heads & beams", "The Moving Bar with twenty-four pixels, one every sixteenth of a block, for fine chases and gradients.",
+                  [P_7CH_ONLY, P_DMBAR_PIXEL], MH_NOTES))
 
 _FAMILY = "Moving heads & beams"
 ATOMIC_TILT_CH = ch("Tilt", "0 to 255", "Tilt of the yoke over its full travel.")
@@ -313,6 +322,8 @@ for id_, name, intro, pers in [("par_led", "LED Par", "LED PAR with colour mixin
                                ("big_panel", "Big Panel 3x3", "Nine-cell LED panel, driven as one.", [P_4CH]), ("big_panel2", "Big Panel 3x2", "Six-cell LED panel, driven as one.", [P_4CH]),
                                ("rgb_bar", "RGB Bar", "Horizontal LED bar with nine pixels and a soft glow whose reach is `rgbBarBeamLength` in the config.", [P_4CH, P_RGBBAR_PIXEL]),
                                ("vertical_bar", "Vertical RGB Bar", "Vertical LED bar with nine pixels.", [P_4CH, P_VBAR_PIXEL]), ("mini_bar", "Mini RGB Bar", "Short LED bar.", [P_4CH]),
+                               ("dense_rgb_bar", "Dense RGB Bar", "The RGB Bar with forty-six pixels, about one every sixteenth of a block, for fine chases, gradients and pixel-mapped effects. Adjacent dense bars fuse their haze sheets.", [P_4CH, P_DRGBBAR_PIXEL]),
+                               ("dense_vertical_bar", "Dense Vertical RGB Bar", "The Vertical RGB Bar with forty-six pixels, one every sixteenth of a block.", [P_4CH, P_DVBAR_PIXEL]),
                                ("truss_3lights", "Truss 3x3 Lights", "Truss piece with nine built-in lights, driven as one.", [P_4CH])]:
     FIXTURES.append(F(id_, name, "PARs & LED panels", intro, pers))
 FIXTURES.append(F("led_facade", "LED Facade", "A pixel-mapped LED wall. Paint the lit pixels in its screen, choose the resolution and smoothing, and drive every pixel from the desk.", [
