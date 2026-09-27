@@ -18,7 +18,7 @@ import org.joml.Vector3f;
  */
 @Environment(EnvType.CLIENT)
 public final class Flow2JetParticleSpawner {
-    private static final int PUFF_BASE = 12;
+    private static final int PUFF_BASE = 14;
     private static final int CORE_BASE = 7;
     /** Demi-angle du cone de volutes ; le coeur reste serre. */
     private static final float PUFF_CONE_DEGREES = 6.0f;
@@ -64,7 +64,7 @@ public final class Flow2JetParticleSpawner {
             Vec3 velocity = Co2SmokePhysics.randomUnitCone(jetDirection, cone, random)
                     .scale(speed * (0.88f + random.nextFloat() * 0.24f));
             Vec3 pos = emitPoint(nozzle, jetDirection, velocity, 0.03f, random);
-            engine.add(new Co2JetPuffParticle(level, pos, velocity, random, pressure));
+            engine.add(new Co2JetPuffParticle(level, pos, velocity, jetDirection, random, pressure));
         }
 
         int cores = Math.round((CORE_BASE + random.nextInt(2)) * flow);
@@ -72,7 +72,7 @@ public final class Flow2JetParticleSpawner {
             Vec3 velocity = Co2SmokePhysics.randomUnitCone(jetDirection, CORE_CONE_DEGREES, random)
                     .scale(speed * 1.06f * (0.95f + random.nextFloat() * 0.10f));
             Vec3 pos = emitPoint(nozzle, jetDirection, velocity, 0.02f, random);
-            engine.add(new Co2JetCoreParticle(level, pos, velocity, random, pressure));
+            engine.add(new Co2JetCoreParticle(level, pos, velocity, jetDirection, random, pressure));
         }
     }
 
