@@ -26,10 +26,23 @@ public final class Flow2JetParticleSpawner {
     /** Vitesse de sortie en blocs/tick : 0.35 a pression minimale, 0.85 a pleine pression (~17 m/s). */
     private static final float SPEED_MIN = 0.35f;
     private static final float SPEED_RANGE = 0.50f;
+    /** Freinage du gaz par tick, le meme que celui des bouffees. */
+    public static final float DRAG = 0.905f;
+    /** Vitesse du front de coupure quand la vanne se ferme, blocs/tick. */
+    public static final float CUT_SPEED = 0.55f;
     private static final int BURST_TICKS = 3;
     private static final float BURST_GAIN = 1.25f;
 
     private Flow2JetParticleSpawner() {
+    }
+
+    public static float exitSpeed(float pressure) {
+        return SPEED_MIN + SPEED_RANGE * pressure;
+    }
+
+    /** Distance du front du panache apres {@code ageTicks} ticks : v0 (1 - drag^age) / (1 - drag). */
+    public static float plumeLength(float pressure, float ageTicks) {
+        return exitSpeed(pressure) * (1f - (float) Math.pow(DRAG, Math.max(0f, ageTicks))) / (1f - DRAG);
     }
 
     /**

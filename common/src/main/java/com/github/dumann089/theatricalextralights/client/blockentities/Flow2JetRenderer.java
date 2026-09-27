@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.client.blockentities;
 
 import com.github.dumann089.theatricalextralights.blockentities.Flow2JetBlockEntity;
+import com.github.dumann089.theatricalextralights.client.Flow2JetClientEffects;
 import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
 import com.github.dumann089.theatricalextralights.fixtures.Flow2JetFixture;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -38,6 +39,8 @@ public class Flow2JetRenderer extends ExtraLightsRenderer<Flow2JetBlockEntity> {
             int packedLight,
             int packedOverlay
     ) {
+        // Panache CO2 volumetrique : soumis a chaque image tant que du gaz est en l'air.
+        Flow2JetClientEffects.submitPlume(blockEntity, partialTick);
         poseStack.pushPose();
         // Same as ExtraLightsRenderer / pyro: mount wrench must apply before the baked model path.
         FixtureMountTransform.apply(poseStack, blockEntity);
