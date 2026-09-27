@@ -246,8 +246,8 @@ ATOMIC_NOTES = ["Every flash is timed from the game clock, so all clients see th
 FIXTURES.append(F("atomictilt", "Atomic Tilt", "A strobe head on a tilting yoke, no pan.", [
     P("6-Channel RGB + Focus + Tilt", [INTENSITY, RED, GREEN, BLUE, FOCUS_CONE, ATOMIC_TILT_CH]),
     P("7-Channel RGB + Focus + Strobe + Tilt", [INTENSITY, RED, GREEN, BLUE, FOCUS_CONE, STROBE, ATOMIC_TILT_CH]),
-    P("5-Channel Atomic + Tilt", ATOMIC_BAR + [ATOMIC_TILT_CH], "White head driven like a Martin Atomic: intensity, duration, rate, effects."),
-    P("8-Channel Atomic RGB + Tilt", ATOMIC_BAR + [RED, GREEN, BLUE, ATOMIC_TILT_CH], "The Atomic engine with a colour."),
+    P("6-Channel Atomic + Focus + Tilt", ATOMIC_BAR + [FOCUS_CONE, ATOMIC_TILT_CH], "White head driven like a Martin Atomic: intensity, duration, rate, effects."),
+    P("9-Channel Atomic RGB + Focus + Tilt", ATOMIC_BAR + [RED, GREEN, BLUE, FOCUS_CONE, ATOMIC_TILT_CH], "The Atomic engine with a colour."),
 ], ATOMIC_NOTES))
 MMB_BEAM = lambda n: [ch(f"Beam {n} intensity", "0 to 255", f"Dimmer of beam {n} (1 is at one end of the bar, 7 at the other)."),
                       ch(f"Beam {n} tilt", "0 to 255", f"Tilt of beam {n}."),

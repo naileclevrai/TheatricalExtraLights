@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MA xmlns:xml="http://www.w3.org/XML/1998/namespace" major_vers="3" minor_vers="2" stream_vers="2">
   <Info datetime="2026-9-27T12:00:00" showfile="ma fixture builder"/>
-  <FixtureType index="0" name="THEATRICAL ATOMIC TILT" mode="5CH Atomic">
+  <FixtureType index="0" name="THEATRICAL ATOMIC TILT" mode="6CH Atomic">
     <InfoItems>
-      <Info>Theatrical Extra Lights Atomic Tilt, 5-channel Atomic personality: Dim, Flash Duration, Flash Rate, Effects, Tilt (white head). Effects: 0-9 strobe, 10-39 blinder, 40-69 ramp up, 70-99 ramp down, 100-129 ramp up/down, 130-159 random, 160-189 lightning, 190-219 spikes, 220-255 sparkle. Rate 0 stops the strobe. Requires mod personality "5-Channel Atomic + Tilt".</Info>
+      <Info>Theatrical Extra Lights Atomic Tilt, 6-channel Atomic personality: Dim, Flash Duration, Flash Rate, Effects, Focus, Tilt (white head). Effects: 0-9 strobe, 10-39 blinder, 40-69 ramp up, 70-99 ramp down, 100-129 ramp up/down, 130-159 random, 160-189 lightning, 190-219 spikes, 220-255 sparkle. Rate 0 stops the strobe. Requires mod personality "6-Channel Atomic + Focus + Tilt".</Info>
     </InfoItems>
-    <short_name>TEL-ATilt5</short_name>
+    <short_name>TEL-ATilt6</short_name>
     <manufacturer>Nailec</manufacturer>
     <short_manufacturer>Nailec</short_manufacturer>
     <Modules index="0">
@@ -66,7 +66,14 @@
             <ChannelSet index="0" name="Sparkle" from_dmx="220" to_dmx="255"/>
           </ChannelFunction>
         </ChannelType>
-        <ChannelType index="4" attribute="TILT" feature="POSITION" preset="POSITION" coarse="5" default="212" highlight_value="50">
+        <ChannelType index="4" attribute="FOCUS" feature="FOCUS" preset="FOCUS" coarse="5" default="128" highlight_value="50">
+          <ChannelFunction index="0" from="0" to="100" min_dmx_24="0" max_dmx_24="16777215" physfrom="0" physto="1" subattribute="FOCUS" subattribute_user_name="Focus" attribute="FOCUS" attribute_user_name="Focus" feature="FOCUS" feature_user_name="Focus" preset="FOCUS" preset_user_name="Focus">
+            <ChannelSet index="0" name="near" from_dmx="0" to_dmx="0"/>
+            <ChannelSet index="1" name="mid" from_dmx="128" to_dmx="128"/>
+            <ChannelSet index="2" name="far" from_dmx="255" to_dmx="255"/>
+          </ChannelFunction>
+        </ChannelType>
+        <ChannelType index="5" attribute="TILT" feature="POSITION" preset="POSITION" coarse="6" default="212" highlight_value="50">
           <ChannelFunction index="0" from="0" to="100" min_dmx_24="0" max_dmx_24="16777215" physfrom="-225" physto="45" subattribute="TILT" subattribute_user_name="Tilt" attribute="TILT" attribute_user_name="Tilt" feature="POSITION" feature_user_name="Position" preset="POSITION" preset_user_name="Position">
             <ChannelSet index="0" name="center" from_dmx="212" to_dmx="212"/>
           </ChannelFunction>

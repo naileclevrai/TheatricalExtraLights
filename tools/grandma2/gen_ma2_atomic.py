@@ -8,8 +8,8 @@ Atomic Strobe (tube of nine white segments between two plates of four RGB zones)
 - 40CH Pixel     : 4CH + 9 Segment sub-fixtures (Dim) + Plate (Dim, Duration, Rate) + 8 Zone sub-fixtures (R, G, B)
 
 Atomic Tilt (strobe head on a tilting yoke):
-- 5CH Atomic     : Dim, Flash Duration, Flash Rate, Effects, Tilt
-- 8CH Atomic RGB : Dim, Flash Duration, Flash Rate, Effects, R, G, B, Tilt
+- 6CH Atomic     : Dim, Flash Duration, Flash Rate, Effects, Focus, Tilt
+- 9CH Atomic RGB : Dim, Flash Duration, Flash Rate, Effects, R, G, B, Focus, Tilt
 
 Attribute choices follow martin@atomic_3000_led in the MA2 library: DIM, STROBEDURATION, SHUTTER
 (strobe rate) and STROBEMODE (effects), with the aura / plate as separate instances so the desk shows
@@ -20,7 +20,7 @@ them as sub-fixtures. The effects ranges are the mod's: 0-9 strobe, 10-39 blinde
 import sys
 from xml.sax.saxutils import escape
 
-from gen_ma2_gobo import channel, dimmer, function, rgb, tilt
+from gen_ma2_gobo import channel, dimmer, focus, function, rgb, tilt
 
 HEADER = '''<?xml version="1.0" encoding="UTF-8"?>
 <MA xmlns:xml="http://www.w3.org/XML/1998/namespace" major_vers="3" minor_vers="2" stream_vers="2">
@@ -191,18 +191,18 @@ def strobe_40() -> str:
     return fixture_type(STROBE_NAME, "TEL-Atom40", "40CH Pixel", info, modules, instances)
 
 
-def tilt_5() -> str:
-    info = ("Theatrical Extra Lights Atomic Tilt, 5-channel Atomic personality: Dim, Flash Duration, Flash Rate, "
-            f"Effects, Tilt (white head). {EFFECTS_TXT} Requires mod personality \"5-Channel Atomic + Tilt\".")
-    return fixture_type(TILT_NAME, "TEL-ATilt5", "5CH Atomic", info,
-                        [module(0, "MAIN", (0.4, 0.3), atomic_bar() + [tilt(4, 5)], "40")], [instance(0, 1, 0, "Main")])
+def tilt_6() -> str:
+    info = ("Theatrical Extra Lights Atomic Tilt, 6-channel Atomic personality: Dim, Flash Duration, Flash Rate, "
+            f"Effects, Focus, Tilt (white head). {EFFECTS_TXT} Requires mod personality \"6-Channel Atomic + Focus + Tilt\".")
+    return fixture_type(TILT_NAME, "TEL-ATilt6", "6CH Atomic", info,
+                        [module(0, "MAIN", (0.4, 0.3), atomic_bar() + [focus(4, 5), tilt(5, 6)], "40")], [instance(0, 1, 0, "Main")])
 
 
-def tilt_8() -> str:
-    info = ("Theatrical Extra Lights Atomic Tilt, 8-channel Atomic RGB personality: Dim, Flash Duration, Flash Rate, "
-            f"Effects, Red, Green, Blue, Tilt. {EFFECTS_TXT} Requires mod personality \"8-Channel Atomic RGB + Tilt\".")
-    channels = atomic_bar() + rgb_channels(4, 5) + [tilt(7, 8)]
-    return fixture_type(TILT_NAME, "TEL-ATilt8", "8CH Atomic RGB", info,
+def tilt_9() -> str:
+    info = ("Theatrical Extra Lights Atomic Tilt, 9-channel Atomic RGB personality: Dim, Flash Duration, Flash Rate, "
+            f"Effects, Red, Green, Blue, Focus, Tilt. {EFFECTS_TXT} Requires mod personality \"9-Channel Atomic RGB + Focus + Tilt\".")
+    channels = atomic_bar() + rgb_channels(4, 5) + [focus(7, 8), tilt(8, 9)]
+    return fixture_type(TILT_NAME, "TEL-ATilt9", "9CH Atomic RGB", info,
                         [module(0, "MAIN", (0.4, 0.3), channels, "40")], [instance(0, 1, 0, "Main")])
 
 
@@ -212,8 +212,8 @@ FILES = {
     "nailec@theatrical_atomic_strobe@8ch_aura.xml": strobe_8,
     "nailec@theatrical_atomic_strobe@10ch_compressed.xml": strobe_10,
     "nailec@theatrical_atomic_strobe@40ch_pixel.xml": strobe_40,
-    "nailec@theatrical_atomic_tilt@5ch_atomic.xml": tilt_5,
-    "nailec@theatrical_atomic_tilt@8ch_atomic_rgb.xml": tilt_8,
+    "nailec@theatrical_atomic_tilt@6ch_atomic.xml": tilt_6,
+    "nailec@theatrical_atomic_tilt@9ch_atomic_rgb.xml": tilt_9,
 }
 
 if __name__ == "__main__":
