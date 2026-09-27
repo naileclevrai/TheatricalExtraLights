@@ -19,6 +19,8 @@ uniform vec3 UpV;           // verticale du monde en espace vue
 uniform float PlumeLength;  // distance du front depuis la buse, blocs
 uniform float CutFront;     // front de coupure depuis la buse, blocs ; negatif = vanne ouverte
 uniform float Pressure;     // 0..1, intensite DMX
+uniform float Dissipate;    // 0 vanne ouverte .. 1 nuage dissipe : le gaz lache s'etale et se dilue
+uniform float Scroll;       // defilement du bruit le long du jet, blocs
 uniform float NozzleRadius; // rayon a la bouche
 uniform float FlashRadius;  // rayon apres la detente eclair
 uniform float ConeTan;      // tangente du demi-angle du cone
@@ -131,7 +133,9 @@ void main() {
     vec3 rd = normalize(reconstructViewPos(uv, 1.0));
 
     float len = max(PlumeLength, 0.05);
-    float rMax = plumeRadius(len) * 1.3 + 0.25;
+    // Nuage lache : il s'etale (rayon), se dilue (densite) et s'effiloche (bord).
+    float spread = 1.0 + 0.9 * Dissipate;
+    float rMax = plumeRadius(len) * spread * 1.3 + 0.25;
     float t0;
     float t1;
     if (!intersectCylinder(vec3(0.0), rd, rMax, -0.15, len + 1.0, t0, t1)) {
@@ -148,7 +152,7 @@ void main() {
 
     // Lumiere de scene : depuis la camera, relevee vers le haut.
     vec3 lightDir = normalize(-rd + UpV * 0.8);
-    float sigma = 9.0 * (0.6 + 0.4 * Pressure);
+    float sigma = 9.0 * (0.6 + 0.4 * Pressure) * (1.0 - 0.9 * Dissipate);
     vec3 tint = vec3(0.97, 0.985, 1.0) * Brightness;
 
     vec3 accum = vec3(0.0);
@@ -164,15 +168,15 @@ void main() {
         float r = length(perp);
         if (z > -0.1 && z < len + 1.0) {
             float zc = max(z, 0.0);
-            float radius = plumeRadius(zc);
+            float radius = plumeRadius(zc) * spread;
             float rho = r / max(radius, 1.0e-3);
             if (rho < 1.6) {
                 // Bruit dans le repere du jet, fixe dans le monde, qui defile avec le gaz.
-                vec3 q = vec3(dot(perp, SideU), dot(perp, SideV), z - Time * 0.6);
+                vec3 q = vec3(dot(perp, SideU), dot(perp, SideV), z - Scroll);
                 float n = fbm(q * 1.5);
                 float n2 = vnoise(q * 5.0 + vec3(3.1, 7.7, -Time * 0.35));
                 // Bord erode par les volutes.
-                float edge = 1.0 - rho + (n - 0.5) * 0.9 + (n2 - 0.5) * 0.3;
+                float edge = 1.0 - rho + (n - 0.5) * (0.9 + 0.6 * Dissipate) + (n2 - 0.5) * 0.3 - 0.45 * Dissipate;
                 float d = smoothstep(0.0, 0.45, edge);
                 // Front dechiquete, dilution vers la tete.
                 float front = len + (n - 0.5) * 2.5;
