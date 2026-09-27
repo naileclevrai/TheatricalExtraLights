@@ -56,6 +56,27 @@ public final class ExtraLightsRenderTypes {
                     .createCompositeState(false)
     );
 
+    /**
+     * Face LED allumee (pixels, segments) : opaque et pleine luminosite, elle recouvre la texture
+     * de l'appareil au lieu de s'y ajouter, et ecrit la profondeur comme une surface.
+     */
+    public static final RenderType LED_FACE = RenderType.create(
+            "extralights_led_face",
+            DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS,
+            4096,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getPositionColorShader))
+                    .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                    .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                    .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+                    .createCompositeState(false)
+    );
+
     private ExtraLightsRenderTypes() {
     }
 }
