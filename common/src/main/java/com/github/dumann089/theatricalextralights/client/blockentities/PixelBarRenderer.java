@@ -3,8 +3,12 @@ package com.github.dumann089.theatricalextralights.client.blockentities;
 import com.github.dumann089.theatricalextralights.blockentities.PixelBarBlockEntity;
 import com.github.dumann089.theatricalextralights.client.Beam2DRenderTypes;
 import com.github.dumann089.theatricalextralights.client.ExtraLightsRenderTypes;
+import com.github.dumann089.theatricalextralights.client.ModShaders;
 import com.github.dumann089.theatricalextralights.client.StrobeVisualEffects;
+import com.github.dumann089.theatricalextralights.client.render.beam.BeamRenderData;
+import com.github.dumann089.theatricalextralights.client.render.beam.raymarch.RaymarchBeamRenderer;
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.imabad.theatrical.client.LazyRenderers;
@@ -14,8 +18,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -28,6 +34,7 @@ import org.joml.Vector4f;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.WeakHashMap;
 
 /**
  * Rendu commun des barres LED a pixels (RGB Bar, Vertical RGB Bar, Moving Bar) : par pixel la
@@ -35,6 +42,10 @@ import java.util.List;
  * vers la camera, et une nappe par plage de LED allumees (volumetrique, ou plate sans le
  * volumetrique). La geometrie des pixels vient de {@link #strip()} ; le placement de la tete de
  * {@code preparePoseStack}, comme pour le modele.
+ *
+ * <p>Une nappe volumetrique porte les couleurs de ses LED : chaque LED peint sa couleur, fois son
+ * niveau, dans une rampe d'une ligne que le shader lit le long de la largeur de la nappe. Une
+ * seule nappe par plage, donc une seule passe de rendu, avec des bandes de couleur dedans.
  *
  * <p>Des barres du meme type posees bout a bout le long de leurs pixels forment une chaine : la
  * barre de tete dessine les nappes pour toute la chaine, avec les pixels de toutes les barres en
@@ -80,13 +91,6 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     }
 
     /**
-     * Nappe volumetrique par plage de LED : le moteur trace un cone de rayon max(rayon de base,
-     * distance x tan(demi-angle)), etire par un facteur en U et en V. Le rayon de base est la
-     * demi-largeur de la plage allumee : une LED seule fait une ligne fine et chaque voisine
-     * allumee ajoute exactement la sienne. (Avec un facteur U egal a la largeur de la plage, la
-     * divergence aurait ete multipliee elle aussi : neuf LED faisaient un eventail de vingt blocs.)
-     */
-    /**
      * Quasi nul : le moteur trace un rayon max(rayon de base, distance x tan), une nappe garde donc
      * sa largeur puis s'ouvre en cone la ou le second terme depasse le premier, avec un coude
      * visible a mi-faisceau. Avec ce demi-angle le coude tombe a plus de cent blocs pour une LED
@@ -108,6 +112,9 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      * donc la distance a la camera, et l'intensite baisse d'autant pour garder la meme luminosite.
      */
     private static final float MIN_SHEET_PIXELS = 3.0f;
+    /** Resolution de la rampe de couleur d'une nappe, en texels par bloc, et sa largeur maximale. */
+    private static final int RAMP_TEXELS_PER_BLOCK = 16;
+    private static final int RAMP_MAX_TEXELS = 1024;
     /** Ecart maximal, en blocs, entre deux barres voisines pour enchainer leurs nappes. */
     private static final int CHAIN_MAX_GAP_BLOCKS = 3;
     /** Deux LED allumees sont contigues (meme barre ou barres voisines) jusqu'a ce multiple du pas. */
@@ -134,6 +141,11 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float FLAT_BEAM_SPREAD = 1.0f;
     /** Demi-epaisseur de la nappe : deux feuilles rapprochees, pour un peu de corps de profil. */
     private static final float FLAT_BEAM_HALF_THICKNESS = 0.015f;
+
+    private static final ResourceLocation OPEN_GOBO = new ResourceLocation("theatricalextralights", "textures/gobos/generic_1/open.png");
+
+    /** Rampes de couleur des nappes de chaque barre de tete, une par plage, reutilisees d'une image a l'autre. */
+    private final WeakHashMap<T, List<DynamicTexture>> ramps = new WeakHashMap<>();
 
     protected PixelBarRenderer(BlockEntityRendererProvider.Context context) {
         super(context);
@@ -169,17 +181,14 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         List<ChainPixel> pixels = leader ? chainPixels(chain, s) : List.of();
 
         if (volumetric && leader) {
-            // Une plage de LED voisines allumees = une seule nappe, quelles que soient leurs couleurs :
-            // couleur moyenne ponderee par le niveau (blanche pour un arc-en-ciel, comme la lumiere
-            // melangee d'une vraie barre dans la haze) et niveau moyen. Une LED seule fait une ligne
-            // fine, chaque voisine allumee elargit la nappe, une LED eteinte la coupe, et la plage
-            // continue d'une barre a la suivante. Une seule passe de rendu par plage : la courbe de
-            // tonalite du shader s'applique a la nappe entiere.
+            // Une plage de LED voisines allumees = une seule nappe, aux couleurs de ses LED : une LED
+            // seule fait une ligne fine, chaque voisine allumee elargit la nappe, une LED eteinte la
+            // coupe, et la plage continue d'une barre a la suivante. Une seule passe de rendu par
+            // plage : la courbe de tonalite du shader s'applique a la nappe entiere.
             int[] index = {0};
-            forEachLitSpan(pixels, s, (alongStart, alongEnd, meanColour, meanLevel, colourRuns) ->
+            forEachLitSpan(pixels, s, (span, alongStart, alongEnd, meanColour, meanLevel) ->
                     submitSheet(blockEntity, s, facing, partialTicks, isFlipped, blockstate, isHanging,
-                            alongStart, alongEnd, meanColour, meanLevel / 255f * PIXEL_BEAM_INTENSITY * beamGain,
-                            index[0]++));
+                            span, alongStart, alongEnd, meanColour, meanLevel, beamGain, index[0]++));
         }
 
         LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
@@ -376,12 +385,12 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     @FunctionalInterface
     protected interface LitSpan {
         /**
+         * @param span       les LED de la plage, dans l'ordre
          * @param alongStart centre de la premiere LED de la plage
          * @param alongEnd   centre de la derniere
          * @param meanColour couleur brute moyenne, ponderee par le niveau de chaque LED
-         * @param colourRuns nombre de suites de couleur dans la plage (1 = plage unie)
          */
-        void accept(float alongStart, float alongEnd, int meanColour, float meanLevel, int colourRuns);
+        void accept(List<ChainPixel> span, float alongStart, float alongEnd, int meanColour, float meanLevel);
     }
 
     /** Parcourt les plages de LED allumees contigues (a moins de quelques pas l'une de l'autre). */
@@ -400,50 +409,113 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                 end++;
             }
             long r = 0, g = 0, b = 0, weight = 0;
-            int colourRuns = 0;
-            int last = -1;
             for (int i = start; i <= end; i++) {
                 ChainPixel p = pixels.get(i);
                 r += (long) ((p.colour() >> 16) & 0xFF) * p.level();
                 g += (long) ((p.colour() >> 8) & 0xFF) * p.level();
                 b += (long) (p.colour() & 0xFF) * p.level();
                 weight += p.level();
-                if (p.colour() != last) {
-                    colourRuns++;
-                    last = p.colour();
-                }
             }
             int mean = weight > 0
                     ? ((int) (r / weight) << 16) | ((int) (g / weight) << 8) | (int) (b / weight)
                     : 0;
-            consumer.accept(pixels.get(start).along(), pixels.get(end).along(), mean,
-                    weight / (float) (end - start + 1), colourRuns);
+            consumer.accept(pixels.subList(start, end + 1), pixels.get(start).along(), pixels.get(end).along(),
+                    mean, weight / (float) (end - start + 1));
             start = end + 1;
         }
     }
 
     // ── Nappes ───────────────────────────────────────────────────────────────
 
-    /** Une nappe volumetrique couvrant les LED de {@code alongStart} a {@code alongEnd}, dans la couleur donnee. */
+    /**
+     * Une nappe volumetrique couvrant les LED de {@code alongStart} a {@code alongEnd}. Avec le
+     * moteur raymarch, la nappe est blanche et porte les couleurs de ses LED dans une rampe ;
+     * sinon elle prend la couleur moyenne.
+     */
     private void submitSheet(T blockEntity, Strip s, Direction facing, float partialTicks, boolean isFlipped,
-                             BlockState blockstate, boolean isHanging, float alongStart, float alongEnd, int colour,
-                             float intensity, int beamIndex) {
+                             BlockState blockstate, boolean isHanging, List<ChainPixel> span,
+                             float alongStart, float alongEnd, int meanColour, float meanLevel, float beamGain,
+                             int beamIndex) {
         float centre = (alongStart + alongEnd) * 0.5f;
         float halfRun = (alongEnd - alongStart) * 0.5f + s.halfAlong();
         PoseStack beamPose = new PoseStack();
         preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
         beamPose.translate(s.faceX() + s.x(centre, 0f), s.faceY() + s.y(centre, 0f), s.faceZ());
         // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe, au moins
-        // quelques pixels a l'ecran.
+        // quelques pixels a l'ecran. Une nappe epaissie pour l'ecran garde la meme lumiere, donc
+        // une densite moindre.
         float half = sheetHalfThickness(blockEntity);
         float thin = half / halfRun;
-        float widthScale = s.vertical() ? thin : 1f;
-        float heightScale = s.vertical() ? 1f : thin;
-        // Couleur pleine, la luminosite passe dans l'intensite ; une nappe epaissie pour l'ecran
-        // garde la meme lumiere, donc une densite moindre.
-        float gain = SHEET_HALF_THICKNESS / half;
-        submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
-                null, 0, 0f, widthScale, heightScale, beamIndex, normalise(colour), intensity * gain, halfRun);
+        float gain = SHEET_HALF_THICKNESS / half * beamGain * PIXEL_BEAM_INTENSITY;
+
+        boolean ramp = TheatricalExtraLightsConfig.isRaymarchEngine() && ModShaders.canUseRaymarch();
+        if (!ramp) {
+            float widthScale = s.vertical() ? thin : 1f;
+            float heightScale = s.vertical() ? 1f : thin;
+            submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
+                    null, 0, 0f, widthScale, heightScale, beamIndex, normalise(meanColour),
+                    meanLevel / 255f * gain, halfRun);
+            return;
+        }
+
+        // Rampe : la couleur fois le niveau de chaque LED, le long de la nappe. L'axe U du faisceau
+        // est l'axe des pixels quelle que soit l'orientation de la barre, l'axe V la traverse.
+        DynamicTexture texture = rampTexture(blockEntity, beamIndex, span,
+                alongStart - s.halfAlong(), alongEnd + s.halfAlong());
+        Matrix4f m = beamPose.last().pose();
+        Vec3 origin = new Vec3(m.m30(), m.m31(), m.m32());
+        Vec3 along = (s.vertical() ? new Vec3(m.m10(), m.m11(), m.m12()) : new Vec3(m.m00(), m.m01(), m.m02())).normalize();
+        Vec3 across = (s.vertical() ? new Vec3(m.m00(), m.m01(), m.m02()) : new Vec3(m.m10(), m.m11(), m.m12())).normalize();
+        Vec3 dir = new Vec3(-m.m20(), -m.m21(), -m.m22()).normalize();
+        float tanHalfAngle = (float) Math.tan(Math.toRadians(PIXEL_HALF_ANGLE_DEG));
+        BeamRenderData data = new BeamRenderData(
+                blockEntity.getBlockPos(), origin, dir, along, across,
+                0f, (float) blockEntity.getDistance(), tanHalfAngle, 0xFFFFFF, gain,
+                OPEN_GOBO, OPEN_GOBO, 0f, 0f, blockEntity.getLevel(),
+                1f, thin, halfRun);
+        RaymarchBeamRenderer.submit(data, texture.getId());
+    }
+
+    /**
+     * Texture d'une ligne, une texel par tranche de bloc, ou chaque tranche prend la couleur de la
+     * LED la plus proche fois son niveau. Reutilisee d'une image a l'autre pour la meme plage.
+     */
+    private DynamicTexture rampTexture(T blockEntity, int index, List<ChainPixel> span, float from, float to) {
+        List<DynamicTexture> list = ramps.computeIfAbsent(blockEntity, k -> new ArrayList<>());
+        int width = Math.max(1, Math.min(RAMP_MAX_TEXELS, Math.round((to - from) * RAMP_TEXELS_PER_BLOCK)));
+        while (list.size() <= index) {
+            list.add(null);
+        }
+        DynamicTexture texture = list.get(index);
+        if (texture == null || texture.getPixels() == null || texture.getPixels().getWidth() != width) {
+            if (texture != null) {
+                texture.close();
+            }
+            texture = new DynamicTexture(width, 1, false);
+            list.set(index, texture);
+        }
+        NativeImage image = texture.getPixels();
+        for (int x = 0; x < width; x++) {
+            float along = from + (x + 0.5f) * (to - from) / width;
+            ChainPixel nearest = span.get(0);
+            float best = Float.MAX_VALUE;
+            for (ChainPixel p : span) {
+                float distance = Math.abs(p.along() - along);
+                if (distance < best) {
+                    best = distance;
+                    nearest = p;
+                }
+            }
+            int colour = nearest.colour();
+            int level = nearest.level();
+            int r = ((colour >> 16) & 0xFF) * level / 255;
+            int g = ((colour >> 8) & 0xFF) * level / 255;
+            int b = (colour & 0xFF) * level / 255;
+            // NativeImage range les canaux en ABGR.
+            image.setPixelRGBA(x, 0, 0xFF000000 | (b << 16) | (g << 8) | r);
+        }
+        texture.upload();
+        return texture;
     }
 
     /** Demi-epaisseur de la nappe pour cette image : la valeur physique, ou ce que couvrent MIN_SHEET_PIXELS. */
@@ -464,7 +536,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         VertexConsumer vc = bufferSource.getBuffer(Beam2DRenderTypes.getBeam());
         Matrix4f m = stack.last().pose();
         Matrix3f normal = stack.last().normal();
-        forEachLitSpan(pixels, s, (alongStart, alongEnd, meanColour, meanLevel, colourRuns) -> {
+        forEachLitSpan(pixels, s, (span, alongStart, alongEnd, meanColour, meanLevel) -> {
             int colour = normalise(meanColour);
             int r = (colour >> 16) & 0xFF;
             int g = (colour >> 8) & 0xFF;

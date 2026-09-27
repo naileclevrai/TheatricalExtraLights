@@ -66,6 +66,9 @@ float animationMask(float u, float v, float radius) {
 // jusqu'a 8 boites d'entites. Un point est ombre si le segment point→source traverse un
 // solide.
 uniform sampler2D Sampler4;
+// Rampe de couleur le long de la largeur d'une nappe de barre LED (une texel par tranche).
+uniform sampler2D Sampler5;
+uniform float ColorRamp;   // 1 : nappe de barre, couleur lue dans Sampler5 selon u, profil en travers seulement
 uniform float ShadowEnabled;
 uniform vec3 VoxelOrigin;   // coin min de la grille, monde
 uniform float VoxelCell;    // taille d'une cellule, blocs
@@ -578,6 +581,22 @@ void main() {
             vec2(u, v)
         ) / radius;
 
+        // Nappe de barre LED : la largeur suit la barre, donc pas de coeur gaussien le long de u
+        // mais un bord doux ; le profil ne joue qu'en travers (v), et la couleur de chaque tranche
+        // vient de la rampe, ou chaque LED a peint sa couleur fois son niveau.
+        float edgeU = 1.0;
+        vec3 rampTint = vec3(1.0);
+        if (ColorRamp > 0.5) {
+            float u01 = abs(u) / radius;
+            if (u01 > 1.0) {
+                t += dt;
+                continue;
+            }
+            edgeU = 1.0 - smoothstep(0.9, 1.0, u01);
+            radial01 = abs(v) / radius;
+            rampTint = texture(Sampler5, vec2(clamp(0.5 + 0.5 * u / radius, 0.0, 1.0), 0.5)).rgb;
+        }
+
         if (radial01 > 1.0) {
             t += dt;
             continue;
@@ -714,7 +733,7 @@ void main() {
         float shadow = shadowFactor(wposS, BeamOriginW, VoxelCell * 0.5);
 
         vec3 radiance =
-            tint *
+            tint * rampTint * edgeU *
             (
                 Intensity *
                 falloff *
