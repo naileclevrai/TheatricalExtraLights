@@ -100,11 +100,19 @@ public final class BlinderRenderHelper {
     private static final float ARRAY_SHARE_ONE_LAMP = 0.6f;
     private static final float ARRAY_SHARE_EIGHT_LAMPS = 1.0f;
     /**
-     * Les disques sont tires vers la camera : poses sur le plan des lentilles, ils passent derriere
-     * les parties de la carrosserie plus proches de l'oeil (dessous, yoke) et l'appareil reste
-     * visible au milieu de son propre eblouissement.
+     * Les disques sont poses devant la face, le long de l'axe de l'appareil : la lumiere est devant
+     * le blinder, pas dans sa carrosserie. Puis un peu tires vers la camera, pour passer devant les
+     * parties de la carrosserie plus proches de l'oeil (dessous, yoke).
      */
-    private static final float TOWARD_CAMERA = 1.0f;
+    private static final float FORWARD_OFFSET = 0.6f;
+    private static final float TOWARD_CAMERA = 0.6f;
+    /**
+     * L'eblouissement n'existe que devant l'appareil : plein quand la camera est a moins d'une
+     * soixantaine de degres de l'axe (cos > 0.5), nul derriere. On ne voit pas la lumiere d'un
+     * blinder depuis son dos.
+     */
+    private static final float FRONT_FULL_COS = 0.5f;
+    private static final float FRONT_NONE_COS = -0.1f;
     /** L'eblouissement tombe vite avec le dimmer (a moitie, on revoit l'appareil), la couronne lentement. */
     private static final float GLARE_LEVEL_EXPONENT = 1.2f;
     private static final float HAZE_LEVEL_EXPONENT = 0.6f;
@@ -129,8 +137,6 @@ public final class BlinderRenderHelper {
             return;
         }
         float level = Math.min(1f, intensity / 255f);
-        float glare = (float) Math.pow(level, GLARE_LEVEL_EXPONENT);
-        float haze = (float) Math.pow(level, HAZE_LEVEL_EXPONENT);
         int color = blockEntity.getColour();
         int hot = whiten(color, LAMP_WHITEN);
         int white = whiten(color, GLARE_WHITEN);
@@ -140,38 +146,72 @@ public final class BlinderRenderHelper {
         int a = (int) (level * 255f);
         float lampRadius = Math.max(lamps.halfW(), lamps.halfH());
 
+        // Axe de l'appareil et position de la rangee dans le repere camera.
+        StrobeVisualEffects.Face array = lamps.array();
+        PoseStack arrayWorld = new PoseStack();
+        headTransform.accept(arrayWorld);
+        array.apply(arrayWorld);
+        Matrix4f am = arrayWorld.last().pose();
+        Vector3f arrayCentre = new Vector3f(am.m30(), am.m31(), am.m32());
+        Vector3f forward = new Vector3f(-am.m20(), -am.m21(), -am.m22()).normalize();
+        float dist = arrayCentre.length();
+        Vector3f toCamera = dist > 1.0e-3f ? new Vector3f(arrayCentre).negate().div(dist) : new Vector3f(0f, 0f, 1f);
+        float front = smoothstep(FRONT_NONE_COS, FRONT_FULL_COS, forward.dot(toCamera));
+        if (front <= 0f) {
+            // Vue de dos : seul le verre des lampes, que la carrosserie cache de toute facon.
+            return;
+        }
+        float glare = (float) Math.pow(level, GLARE_LEVEL_EXPONENT) * front;
+        float haze = (float) Math.pow(level, HAZE_LEVEL_EXPONENT) * front;
+        // A pleine puissance de face, les lampes disparaissent dans l'eblouissement : les quatre
+        // cellules ne se distinguent plus. Elles reviennent quand l'appareil baisse.
+        float lampShow = 1f - glare;
+
         for (float x : lamps.xs()) {
             for (float y : lamps.ys()) {
+                if (lampShow <= 0.01f) {
+                    continue;
+                }
+                // Le verre de la lampe est fondu (pas additif) et se dessine apres l'eblouissement :
+                // a pleine puissance il peindrait quatre carres orange sur le blanc. Il suit lampShow.
                 StrobeVisualEffects.Face lamp = new StrobeVisualEffects.Face(x, y, lamps.z(), lamps.halfW(), lamps.halfH(), false);
                 viewPose.pushPose();
                 headTransform.accept(viewPose);
                 lamp.apply(viewPose);
-                StrobeVisualEffects.renderFace(bufferSource, viewPose, lamp, hr, hg, hb, a);
+                StrobeVisualEffects.renderFace(bufferSource, viewPose, lamp, hr, hg, hb, (int) (a * lampShow));
                 viewPose.popPose();
-
-                Vector3f centre = towardCamera(worldCentre(headTransform, lamp));
+                Vector3f centre = placeDisc(worldCentre(headTransform, lamp), forward);
                 StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, hot,
-                        lampRadius * LAMP_DISC_RADIUS, level);
+                        lampRadius * LAMP_DISC_RADIUS, level * front * lampShow);
                 StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, color,
-                        lampRadius * LAMP_BLOOM_RADIUS, haze * LAMP_BLOOM_STRENGTH);
+                        lampRadius * LAMP_BLOOM_RADIUS, haze * LAMP_BLOOM_STRENGTH * lampShow);
             }
         }
 
-        StrobeVisualEffects.Face array = lamps.array();
-        Vector3f arrayCentre = towardCamera(worldCentre(headTransform, array));
+        Vector3f glareCentre = placeDisc(arrayCentre, forward);
         float arrayRadius = Math.max(array.halfW(), array.halfH());
         float share = ARRAY_SHARE_ONE_LAMP + (ARRAY_SHARE_EIGHT_LAMPS - ARRAY_SHARE_ONE_LAMP)
                 * Math.min(1f, (lamps.count() - 1) / 7f);
         // L'eblouissement : la carrosserie disparait dans un pave blanc-chaud.
         for (float[] layer : GLARE_LAYERS) {
-            StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, white,
+            StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, glareCentre, white,
                     arrayRadius * layer[0], glare * share * layer[1]);
         }
         // La couronne coloree dans la haze.
         for (float[] layer : HAZE_LAYERS) {
-            StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
+            StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, glareCentre, color,
                     arrayRadius * layer[0], haze * share * layer[1]);
         }
+    }
+
+    /** Devant la face le long de l'axe de l'appareil, puis un peu vers la camera. */
+    private static Vector3f placeDisc(Vector3f facePoint, Vector3f forward) {
+        return towardCamera(new Vector3f(forward).mul(FORWARD_OFFSET).add(facePoint));
+    }
+
+    private static float smoothstep(float edge0, float edge1, float x) {
+        float t = Math.max(0f, Math.min(1f, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3f - 2f * t);
     }
 
     /** Rapproche un point de la camera (repere camera) pour que le disque passe devant la carrosserie. */
