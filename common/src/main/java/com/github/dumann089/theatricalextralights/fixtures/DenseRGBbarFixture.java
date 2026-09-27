@@ -2,8 +2,11 @@ package com.github.dumann089.theatricalextralights.fixtures;
 
 import com.github.dumann089.theatricalextralights.blockentities.DenseRGBBarBlockEntity;
 import com.github.dumann089.theatricalextralights.blockentities.PixelBarBlockEntity;
+import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
 import dev.imabad.theatrical.api.dmx.DMXPersonality;
 import dev.imabad.theatrical.fixtures.SharedSlots;
+
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -22,6 +25,15 @@ public class DenseRGBbarFixture extends RGBbarFixture {
                     PixelBarPersonalities.pixelModeName(PIXEL_CHANNEL_COUNT, DenseRGBBarBlockEntity.PIXEL_COUNT, "")),
                     DenseRGBBarBlockEntity.PIXEL_COUNT)
     );
+
+    /** Tete dense : une LED par pixel au lieu des lentilles de la barre d'origine (tools/models/gen_dense_bars.py). */
+    private static final ResourceLocation DENSE_TILT_MODEL =
+            new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/ledbar/ledbar_dense_tilt");
+
+    @Override
+    public ResourceLocation getTiltModel() {
+        return DENSE_TILT_MODEL;
+    }
 
     @Override
     public List<DMXPersonality> getDMXPersonalities() {
