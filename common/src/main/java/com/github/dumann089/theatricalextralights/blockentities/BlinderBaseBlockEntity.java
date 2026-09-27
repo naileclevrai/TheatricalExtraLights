@@ -108,7 +108,14 @@ public abstract class BlinderBaseBlockEntity extends ExtraLightsLightBlockEntity
      * blinder reste noir ; un blinder arrose tout ce qui l'entoure, sa lumiere reste pres de lui
      * et c'est son rayon (28 a 55 blocs selon le modele) qui porte sur la scene.
      */
-    private static final float EMISSION_DISTANCE = 10.0f;
+    private static final float EMISSION_DISTANCE = 8.0f;
+    /** Un blinder aveugle : rayon des fixtures fois ce facteur (42 blocs pour le 1x1, 82 pour le 4x2). */
+    private static final float LIGHT_SPREAD_BOOST = 1.5f;
+    /**
+     * Couleur de la lumiere dynamique tiree vers le blanc : un orange sature est une couleur sombre
+     * pour une source ponctuelle, un blanc chaud eclaire bien plus fort tout en restant chaud.
+     */
+    private static final float LIGHT_WHITEN = 0.45f;
 
     @Override
     public float getMaxLightDistance() {
@@ -117,7 +124,17 @@ public abstract class BlinderBaseBlockEntity extends ExtraLightsLightBlockEntity
 
     @Override
     public float getLightSpread() {
-        return (float) getFixture().getLightRadius();
+        return (float) getFixture().getLightRadius() * LIGHT_SPREAD_BOOST;
+    }
+
+    @Override
+    public int getLightColour() {
+        int colour = getColour();
+        int r = (colour >> 16) & 0xFF, g = (colour >> 8) & 0xFF, b = colour & 0xFF;
+        r += (int) ((255 - r) * LIGHT_WHITEN);
+        g += (int) ((255 - g) * LIGHT_WHITEN);
+        b += (int) ((255 - b) * LIGHT_WHITEN);
+        return ((int) getIntensity() << 24) | (r << 16) | (g << 8) | b;
     }
 
     @Override
