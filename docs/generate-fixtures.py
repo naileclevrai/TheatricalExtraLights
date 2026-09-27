@@ -319,6 +319,8 @@ FIXTURES += [
     F("blinder2x2", "2x2 Blinder", "Four-lamp blinder with colour mixing.", [P_4CH_IRGB]),
     F("blinder1x1", "Blinder 1x1", "Single-lamp blinder with colour mixing and a strobe channel.",
       [P("5-Channel iRGB + Strobe", [INTENSITY, RED, GREEN, BLUE, STROBE])]),
+    F("blinder1x2", "Blinder 1x2", "Two-lamp blinder, the 1x1 head doubled on one yoke, with colour mixing and a strobe channel.",
+      [P("5-Channel iRGB + Strobe", [INTENSITY, RED, GREEN, BLUE, STROBE])]),
     F("blinder_warm", "Blinder (warm)", "Eight-lamp blinder, fixed warm tungsten.", [P_1CH]),
     F("blinder2x2warm", "2x2 Blinder (Warm)", "Four-lamp blinder, fixed warm tungsten.", [P_1CH]),
     F("strobe", "Strobe", "Stage strobe with four ways to patch it.", [
