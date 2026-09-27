@@ -1,6 +1,6 @@
 # PARs & LED panels
 
-One page per fixture, each channel explained. 51 fixtures.
+One page per fixture, each channel explained. 53 fixtures.
 
 | Fixture | Modes |
 |---|---|
@@ -54,4 +54,6 @@ One page per fixture, each channel explained. 51 fixtures.
 | [RGB Bar](/fixtures/rgb_bar) | 4-Channel Mode (4), 36-Channel Pixel Mode (9x Dim/RGB) (36) |
 | [Vertical RGB Bar](/fixtures/vertical_bar) | 4-Channel Mode (4), 36-Channel Pixel Mode (9x Dim/RGB) (36) |
 | [Mini RGB Bar](/fixtures/mini_bar) | 4-Channel Mode (4) |
+| [Dense RGB Bar](/fixtures/dense_rgb_bar) | 4-Channel Mode (4), 184-Channel Pixel Mode (46x Dim/RGB) (184) |
+| [Dense Vertical RGB Bar](/fixtures/dense_vertical_bar) | 4-Channel Mode (4), 184-Channel Pixel Mode (46x Dim/RGB) (184) |
 | [Truss 3x3 Lights](/fixtures/truss_3lights) | 4-Channel Mode (4) |

@@ -38,6 +38,12 @@ BARS = [
          size=(0.25, 2.9), vertical=True, moving=False, order="bottom to top"),
     dict(slug="moving_bar", name="THEATRICAL MOVING BAR", label="Moving Bar", short="TEL-MBar", pixels=8,
          size=(1.5, 0.19), vertical=False, moving=True, order="left to right"),
+    dict(slug="dense_rgb_bar", name="THEATRICAL DENSE RGB BAR", label="Dense RGB Bar", short="TEL-DBar", pixels=46,
+         size=(2.9, 0.25), vertical=False, moving=False, order="left to right"),
+    dict(slug="dense_vertical_rgb_bar", name="THEATRICAL DENSE VERTICAL RGB BAR", label="Dense Vertical RGB Bar", short="TEL-DVBar", pixels=46,
+         size=(0.25, 2.9), vertical=True, moving=False, order="bottom to top"),
+    dict(slug="dense_moving_bar", name="THEATRICAL DENSE MOVING BAR", label="Dense Moving RGB Bar", short="TEL-DMBar", pixels=24,
+         size=(1.5, 0.19), vertical=False, moving=True, order="left to right"),
 ]
 
 

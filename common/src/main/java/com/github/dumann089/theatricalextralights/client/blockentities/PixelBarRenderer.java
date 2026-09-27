@@ -81,6 +81,16 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
             return halfAlong * 2.4f;
         }
 
+        /** Barre dense : LED plus petites qu'un quart de bloc, lueurs basse resolution et sans bloom serre. */
+        boolean dense() {
+            return pitch < 0.1f;
+        }
+
+        /** Texels de rampe par bloc : au moins trois par LED, pour que chaque LED garde sa couleur. */
+        int rampTexelsPerBlock() {
+            return Math.max(RAMP_TEXELS_PER_BLOCK, (int) Math.ceil(3f / pitch));
+        }
+
         float x(float along, float across) {
             return vertical ? across : along;
         }
@@ -114,11 +124,13 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float MIN_SHEET_PIXELS = 3.0f;
     /** Resolution de la rampe de couleur d'une nappe, en texels par bloc, et sa largeur maximale. */
     private static final int RAMP_TEXELS_PER_BLOCK = 16;
-    private static final int RAMP_MAX_TEXELS = 1024;
+    private static final int RAMP_MAX_TEXELS = 2048;
     /** Ecart maximal, en blocs, entre deux barres voisines pour enchainer leurs nappes. */
     private static final int CHAIN_MAX_GAP_BLOCKS = 3;
     /** Deux LED allumees sont contigues (meme barre ou barres voisines) jusqu'a ce multiple du pas. */
     private static final float CHAIN_CONTIGUOUS_PITCHES = 2.2f;
+    /** Jonction minimale entre deux barres, en blocs : sans elle, deux barres denses voisines ne s'uniraient jamais. */
+    private static final float CHAIN_BRIDGE_MIN_BLOCKS = 0.45f;
     /** Lueur large et douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
     private static final float DOT_GLOW_STRENGTH = 0.65f;
     /** Bloom serre autour de la LED : un halo vif, a une fraction du rayon de la lueur large. */
@@ -265,10 +277,13 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                     Vector4f c = wm.transform(new Vector4f(s.x(s.along(i), 0f), s.y(s.along(i), 0f), 0f, 1f));
                     Vector3f centre = new Vector3f(c.x, c.y, c.z);
                     // Deux disques : un bloom serre et vif contre la LED, puis la lueur large et douce.
+                    // Barre dense : la seule lueur large, basse resolution ; ses voisines la rejoignent.
+                    if (!s.dense()) {
+                        StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera, centre, colour,
+                                s.glowRadius() * DOT_BLOOM_RADIUS_SCALE, alpha * level / 255f * DOT_BLOOM_STRENGTH);
+                    }
                     StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera, centre, colour,
-                            s.glowRadius() * DOT_BLOOM_RADIUS_SCALE, alpha * level / 255f * DOT_BLOOM_STRENGTH);
-                    StrobeVisualEffects.renderGlowDot(bufferSource, poseStack, camera, centre, colour,
-                            s.glowRadius(), alpha * level / 255f * DOT_GLOW_STRENGTH);
+                            s.glowRadius(), alpha * level / 255f * DOT_GLOW_STRENGTH, s.dense());
                 }
 
                 if (!volumetric && leader) {
@@ -393,9 +408,13 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         void accept(List<ChainPixel> span, float alongStart, float alongEnd, int meanColour, float meanLevel);
     }
 
-    /** Parcourt les plages de LED allumees contigues (a moins de quelques pas l'une de l'autre). */
+    /**
+     * Parcourt les plages de LED allumees contigues. Une plage ne s'etend que sur des LED allumees
+     * voisines : l'ecart maximal ne joue donc qu'a la jonction de deux barres, ou il n'y a pas de LED.
+     * Il vaut quelques pas, et au moins {@link #CHAIN_BRIDGE_MIN_BLOCKS} pour les barres denses.
+     */
     private static void forEachLitSpan(List<ChainPixel> pixels, Strip s, LitSpan consumer) {
-        float maxGap = s.pitch() * CHAIN_CONTIGUOUS_PITCHES;
+        float maxGap = Math.max(s.pitch() * CHAIN_CONTIGUOUS_PITCHES, CHAIN_BRIDGE_MIN_BLOCKS);
         int n = pixels.size();
         int start = 0;
         while (start < n) {
@@ -482,7 +501,7 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
      */
     private DynamicTexture rampTexture(T blockEntity, int index, List<ChainPixel> span, float from, float to) {
         List<DynamicTexture> list = ramps.computeIfAbsent(blockEntity, k -> new ArrayList<>());
-        int width = Math.max(1, Math.min(RAMP_MAX_TEXELS, Math.round((to - from) * RAMP_TEXELS_PER_BLOCK)));
+        int width = Math.max(1, Math.min(RAMP_MAX_TEXELS, Math.round((to - from) * strip().rampTexelsPerBlock())));
         while (list.size() <= index) {
             list.add(null);
         }
