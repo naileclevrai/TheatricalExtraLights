@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.client.blockentities;
 
 import com.github.dumann089.theatricalextralights.blockentities.AtomicStrobeBlockEntity;
+import com.github.dumann089.theatricalextralights.client.ExtraLightsRenderTypes;
 import com.github.dumann089.theatricalextralights.client.StrobeVisualEffects;
 import com.github.dumann089.theatricalextralights.util.AtomicStrobeEngine;
 import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
@@ -13,7 +14,6 @@ import dev.imabad.theatrical.client.LazyRenderers;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
@@ -40,6 +40,8 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
     private static final float BOT_Y0 = 3.75f / 16f;
     private static final float BOT_Y1 = 6.47f / 16f;
     private static final float FACE_Z = 11.5f / 16f + 0.002f;
+    /** Fond sombre d'une plaque allumee, juste devant la texture : les joints entre pixels. */
+    private static final float BACKING_Z = 11.5f / 16f + 0.001f;
 
     private BakedModel cachedPanModel, cachedTiltModel, cachedStaticModel;
 
@@ -84,7 +86,7 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
     /** LED de la face en emissif, au niveau de cette image (un flash plus court qu'une image compte). */
     private void renderLeds(AtomicStrobeBlockEntity be, PoseStack poseStack, float partialTicks) {
         MultiBufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
-        VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
+        VertexConsumer vc = buffers.getBuffer(ExtraLightsRenderTypes.LED_FACE);
         Matrix4f m = poseStack.last().pose();
         double window = AtomicStrobeEngine.FRAME_SECONDS;
 
@@ -98,6 +100,7 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
                 float y1 = plateIdx == 0 ? TOP_Y1 : BOT_Y1;
                 float ph = (y1 - y0) / AtomicStrobeBlockEntity.PIXEL_ROWS;
                 float gapY = ph * 0.1f;
+                quad(vc, m, LED_X0, y0, LED_X1, y1, BACKING_Z, 0x14, 0x18, 0x1e);
                 for (int row = 0; row < AtomicStrobeBlockEntity.PIXEL_ROWS; row++) {
                     float top = y1 - row * ph;
                     for (int col = 0; col < AtomicStrobeBlockEntity.PIXEL_COLS; col++) {
@@ -113,7 +116,7 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
                             continue;
                         }
                         float x0 = LED_X0 + col * pw;
-                        quad(vc, m, x0 + gapX, top - ph + gapY, x0 + pw - gapX, top - gapY, r, g, b);
+                        quad(vc, m, x0 + gapX, top - ph + gapY, x0 + pw - gapX, top - gapY, FACE_Z, r, g, b);
                     }
                 }
             }
@@ -125,15 +128,15 @@ public class AtomicStrobeRenderer extends ExtraLightsFixtureRenderer<AtomicStrob
                 continue;
             }
             int w = Math.min(255, Math.round(level * 255f));
-            quad(vc, m, LED_X0 + i * segW, BAR_Y0, LED_X0 + (i + 1) * segW, BAR_Y1, w, w, w);
+            quad(vc, m, LED_X0 + i * segW, BAR_Y0, LED_X0 + (i + 1) * segW, BAR_Y1, FACE_Z, w, w, w);
         }
     }
 
-    private static void quad(VertexConsumer vc, Matrix4f m, float x0, float y0, float x1, float y1, int r, int g, int b) {
-        vc.vertex(m, x0, y0, FACE_Z).color(r, g, b, 255).endVertex();
-        vc.vertex(m, x1, y0, FACE_Z).color(r, g, b, 255).endVertex();
-        vc.vertex(m, x1, y1, FACE_Z).color(r, g, b, 255).endVertex();
-        vc.vertex(m, x0, y1, FACE_Z).color(r, g, b, 255).endVertex();
+    private static void quad(VertexConsumer vc, Matrix4f m, float x0, float y0, float x1, float y1, float z, int r, int g, int b) {
+        vc.vertex(m, x0, y0, z).color(r, g, b, 255).endVertex();
+        vc.vertex(m, x1, y0, z).color(r, g, b, 255).endVertex();
+        vc.vertex(m, x1, y1, z).color(r, g, b, 255).endVertex();
+        vc.vertex(m, x0, y1, z).color(r, g, b, 255).endVertex();
     }
 
     @Override
