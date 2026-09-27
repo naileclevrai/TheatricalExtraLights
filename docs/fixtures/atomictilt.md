@@ -13,8 +13,8 @@ A strobe head on a tilting yoke, no pan.
 |---|---|
 | 6-Channel RGB + Focus + Tilt | 6 |
 | 7-Channel RGB + Focus + Strobe + Tilt | 7 |
-| 5-Channel Atomic + Tilt | 5 |
-| 8-Channel Atomic RGB + Tilt | 8 |
+| 6-Channel Atomic + Focus + Tilt | 6 |
+| 9-Channel Atomic RGB + Focus + Tilt | 9 |
 
 Select the mode in the fixture config screen; the footprint changes immediately.
 
@@ -71,7 +71,7 @@ Select the mode in the fixture config screen; the footprint changes immediately.
 
 **7 · Tilt** — Tilt of the yoke over its full travel.
 
-## 5-Channel Atomic + Tilt (5 ch)
+## 6-Channel Atomic + Focus + Tilt (6 ch)
 
 White head driven like a Martin Atomic: intensity, duration, rate, effects.
 
@@ -81,7 +81,8 @@ White head driven like a Martin Atomic: intensity, duration, rate, effects.
 | 2 | Flash duration | 0 to 255 |
 | 3 | Flash rate | 0 to 255 |
 | 4 | Effects | 0 to 255 |
-| 5 | Tilt | 0 to 255 |
+| 5 | Focus | 0 tight to 255 wide |
+| 6 | Tilt | 0 to 255 |
 
 ### Channel by channel
 
@@ -93,9 +94,11 @@ White head driven like a Martin Atomic: intensity, duration, rate, effects.
 
 **4 · Effects** — 0-9 plain strobe; 10-39 blinder, lamp on continuously; 40-69 ramp up; 70-99 ramp down; 100-129 ramp up and down; 130-159 random; 160-189 lightning bursts; 190-219 spikes; 220-255 sparkle (each bar segment flashes on its own in the pixel modes).
 
-**5 · Tilt** — Tilt of the yoke over its full travel.
+**5 · Focus** — Cone width of the beam. Low values give a tight pencil beam, high values a wide wash. It also drives the size of the light spot on the ground.
 
-## 8-Channel Atomic RGB + Tilt (8 ch)
+**6 · Tilt** — Tilt of the yoke over its full travel.
+
+## 9-Channel Atomic RGB + Focus + Tilt (9 ch)
 
 The Atomic engine with a colour.
 
@@ -108,7 +111,8 @@ The Atomic engine with a colour.
 | 5 | Red | 0 to 255 |
 | 6 | Green | 0 to 255 |
 | 7 | Blue | 0 to 255 |
-| 8 | Tilt | 0 to 255 |
+| 8 | Focus | 0 tight to 255 wide |
+| 9 | Tilt | 0 to 255 |
 
 ### Channel by channel
 
@@ -126,4 +130,6 @@ The Atomic engine with a colour.
 
 **7 · Blue** — Blue component of the additive colour mix. With red and green at 255 too the light is white; all three at 0 gives a dark fixture even with the dimmer up.
 
-**8 · Tilt** — Tilt of the yoke over its full travel.
+**8 · Focus** — Cone width of the beam. Low values give a tight pencil beam, high values a wide wash. It also drives the size of the light spot on the ground.
+
+**9 · Tilt** — Tilt of the yoke over its full travel.

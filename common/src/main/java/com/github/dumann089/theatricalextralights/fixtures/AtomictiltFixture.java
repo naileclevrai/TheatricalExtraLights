@@ -34,13 +34,14 @@ public class AtomictiltFixture extends Fixture {
                     .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.TILT),
-            new DMXPersonality(5, "5-Channel Atomic + Tilt")
+            new DMXPersonality(6, "6-Channel Atomic + Focus + Tilt")
                     .addSlot(AtomicSlots.INTENSITY)
                     .addSlot(AtomicSlots.DURATION)
                     .addSlot(AtomicSlots.RATE)
                     .addSlot(AtomicSlots.EFFECTS)
+                    .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.TILT),
-            new DMXPersonality(8, "8-Channel Atomic RGB + Tilt")
+            new DMXPersonality(9, "9-Channel Atomic RGB + Focus + Tilt")
                     .addSlot(AtomicSlots.INTENSITY)
                     .addSlot(AtomicSlots.DURATION)
                     .addSlot(AtomicSlots.RATE)
@@ -48,6 +49,7 @@ public class AtomictiltFixture extends Fixture {
                     .addSlot(SharedSlots.RED)
                     .addSlot(SharedSlots.GREEN)
                     .addSlot(SharedSlots.BLUE)
+                    .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.TILT)
     );
 

@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Tete strobe sur lyre a tilt. Deux modes historiques (RGB + focus [+ strobe shutter] + tilt) et
  * deux modes Atomic ou l'intensite instantanee vient de {@link AtomicStrobeEngine} : intensite,
- * duree de flash, cadence, effets [+ RGB], tilt.
+ * duree de flash, cadence, effets [+ RGB], focus, tilt.
  */
 public class AtomictiltBlockEntity extends ExtraLightsLightBlockEntity
         implements HasPersonality, DmxStrobeFixture, DmxFrameAtomictiltSync {
@@ -285,8 +285,8 @@ public class AtomictiltBlockEntity extends ExtraLightsLightBlockEntity
                 flashRate = convertByteToInt(v[2]);
                 flashEffect = convertByteToInt(v[3]);
                 red = green = blue = 255;
-                focus = 255;
-                newRawTilt = convertByteToInt(v[4]);
+                focus = convertByteToInt(v[4]);
+                newRawTilt = convertByteToInt(v[5]);
             }
             case ATOMIC_RGB_TILT_MODE -> {
                 intensity = convertByteToInt(v[0]);
@@ -296,8 +296,8 @@ public class AtomictiltBlockEntity extends ExtraLightsLightBlockEntity
                 red = convertByteToInt(v[4]);
                 green = convertByteToInt(v[5]);
                 blue = convertByteToInt(v[6]);
-                focus = 255;
-                newRawTilt = convertByteToInt(v[7]);
+                focus = convertByteToInt(v[7]);
+                newRawTilt = convertByteToInt(v[8]);
             }
             default -> {
                 intensity = convertByteToInt(v[0]);

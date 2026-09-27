@@ -34,8 +34,8 @@ All under manufacturer **Nailec**. The pixel modes are multi-instance types: the
 | `nailec@theatrical_atomic_strobe@8ch_aura.xml` | THEATRICAL ATOMIC STROBE | 8-Channel Atomic + Aura | 8 |
 | `nailec@theatrical_atomic_strobe@10ch_compressed.xml` | THEATRICAL ATOMIC STROBE | 10-Channel Compressed (Bar + Plate) | 10 |
 | `nailec@theatrical_atomic_strobe@40ch_pixel.xml` | THEATRICAL ATOMIC STROBE | 40-Channel Pixel (Bar + Plate) | 40 |
-| `nailec@theatrical_atomic_tilt@5ch_atomic.xml` | THEATRICAL ATOMIC TILT | 5-Channel Atomic + Tilt | 5 |
-| `nailec@theatrical_atomic_tilt@8ch_atomic_rgb.xml` | THEATRICAL ATOMIC TILT | 8-Channel Atomic RGB + Tilt | 8 |
+| `nailec@theatrical_atomic_tilt@6ch_atomic.xml` | THEATRICAL ATOMIC TILT | 6-Channel Atomic + Focus + Tilt | 6 |
+| `nailec@theatrical_atomic_tilt@9ch_atomic_rgb.xml` | THEATRICAL ATOMIC TILT | 9-Channel Atomic RGB + Focus + Tilt | 9 |
 
 The Atomic layouts follow the Martin Atomic 3000 LED profile of the MA2 library: **DIM**, **STROBEDURATION** (12 to 650 ms), **SHUTTER** as the flash rate (0 stops the strobe, 1 to 255 runs 0.5 to 25 Hz) and **STROBEMODE** for the effects, with named ranges for strobe, blinder, ramp up, ramp down, ramp up/down, random, lightning, spikes and sparkle. The Aura (8ch) and the Plate (10ch, 40ch) are sub-fixture **1.1**; on the 40ch pixel mode the nine bar segments are **1.1 to 1.9**, the plate **1.10** and the eight RGB zones **1.11 to 1.18** (zones 1 to 4 on the top plate, 5 to 8 on the bottom, left to right). On a plate the rate channel at 0 leaves it on continuously.
 
