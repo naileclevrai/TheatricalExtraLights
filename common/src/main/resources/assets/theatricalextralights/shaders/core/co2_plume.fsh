@@ -133,8 +133,11 @@ void main() {
     vec3 rd = normalize(reconstructViewPos(uv, 1.0));
 
     float len = max(PlumeLength, 0.05);
-    // Nuage lache : il s'etale (rayon), se dilue (densite) et s'effiloche (bord).
-    float spread = 1.0 + 0.9 * Dissipate;
+    // Nuage lache : il s'etale (rayon), se dilue (densite) et s'effiloche (bord). Courbe en S pour
+    // l'etalement et le bord, densite qui tend vers zero sans cassure : rien ne saute a la fin.
+    float k = Dissipate * Dissipate * (3.0 - 2.0 * Dissipate);
+    float thin = pow(1.0 - Dissipate, 1.6);
+    float spread = 1.0 + 1.2 * k;
     float rMax = plumeRadius(len) * spread * 1.3 + 0.25;
     float t0;
     float t1;
@@ -152,7 +155,7 @@ void main() {
 
     // Lumiere de scene : depuis la camera, relevee vers le haut.
     vec3 lightDir = normalize(-rd + UpV * 0.8);
-    float sigma = 9.0 * (0.6 + 0.4 * Pressure) * (1.0 - 0.9 * Dissipate);
+    float sigma = 9.0 * (0.6 + 0.4 * Pressure) * thin;
     vec3 tint = vec3(0.97, 0.985, 1.0) * Brightness;
 
     vec3 accum = vec3(0.0);
@@ -176,15 +179,16 @@ void main() {
                 float n = fbm(q * 1.5);
                 float n2 = vnoise(q * 5.0 + vec3(3.1, 7.7, -Time * 0.35));
                 // Bord erode par les volutes.
-                float edge = 1.0 - rho + (n - 0.5) * (0.9 + 0.6 * Dissipate) + (n2 - 0.5) * 0.3 - 0.45 * Dissipate;
+                float edge = 1.0 - rho + (n - 0.5) * (0.9 + 0.6 * k) + (n2 - 0.5) * 0.3 - 0.5 * k;
                 float d = smoothstep(0.0, 0.45, edge);
                 // Front dechiquete, dilution vers la tete.
                 float front = len + (n - 0.5) * 2.5;
                 d *= 1.0 - smoothstep(front - 1.8, front + 0.3, z);
                 d *= mix(1.0, 0.35, smoothstep(0.45 * len, len, z));
-                // Coupure de vanne : derriere le front de coupure il n'y a plus de gaz.
+                // Coupure de vanne : derriere le front de coupure il n'y a plus de gaz. Bande large
+                // et brouillee par le bruit, pour une limite qui s'estompe au lieu de balayer.
                 if (CutFront > 0.0) {
-                    d *= smoothstep(CutFront - 0.5, CutFront + 1.0, z + (n - 0.5) * 1.2);
+                    d *= smoothstep(CutFront - 1.2, CutFront + 2.2, z + (n - 0.5) * 1.8);
                 }
                 if (d > 0.001) {
                     vec3 nrm = r > 1.0e-4 ? perp / r : vec3(0.0);

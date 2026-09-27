@@ -207,7 +207,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
 
     /** Rayon maximal du panache : celui de la tete gonflee, comme dans le shader. */
     private static float maxRadius(Slot s) {
-        return (FLASH_RADIUS + s.length * CONE_TAN) * 1.7f * (1f + 0.9f * s.dissipate) * 1.3f + 0.25f;
+        return (FLASH_RADIUS + s.length * CONE_TAN) * 1.7f * (1f + 1.2f * s.dissipate) * 1.3f + 0.25f;
     }
 
     /** Boite englobante du cone, faces vers l'interieur comme la boite des faisceaux. */
