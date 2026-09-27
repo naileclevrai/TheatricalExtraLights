@@ -6,8 +6,6 @@ import com.github.dumann089.theatricalextralights.util.FixtureJetDirection;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
@@ -21,59 +19,14 @@ public final class Flow2JetParticleSpawner {
     private Flow2JetParticleSpawner() {
     }
 
-    public static Vec3 adjustNozzleForFacing(Direction facing, BlockPos blockPos, Vec3 nozzle) {
-        if (facing.getAxis() != Direction.Axis.X) {
-            return nozzle;
-        }
-        return mirrorAroundBlockCenter(nozzle, blockPos);
-    }
-
-    public static Vector3f adjustDirectionForFacing(Direction facing, Vector3f direction) {
-        if (facing.getAxis() != Direction.Axis.X) {
-            return direction;
-        }
-        return mirrorDirection(direction);
-    }
-
-    public static void spawnJet(
-            ClientLevel level,
-            BlockPos blockPos,
-            Direction facing,
-            float pan,
-            float userTilt,
-            float[] headPivot,
-            float[] beamStart,
-            boolean rigged,
-            boolean flipped,
-            int intensity,
-            RandomSource random
-    ) {
+    /**
+     * @param nozzle       bouche de la buse en coordonnees monde (pose du modele deja appliquee)
+     * @param jetDirection axe du jet, unitaire, en coordonnees monde
+     */
+    public static void spawnJet(ClientLevel level, Vec3 nozzle, Vector3f jetDirection, int intensity, RandomSource random) {
         if (intensity <= 0) {
             return;
         }
-
-        Vector3f jetDirection = FixtureJetDirection.directionFromFlow2JetPose(
-                blockPos,
-                facing,
-                pan,
-                userTilt,
-                headPivot,
-                beamStart,
-                rigged,
-                flipped
-        );
-        Vec3 nozzle = FixtureJetDirection.beamWorldPositionFlow2Jet(
-                blockPos,
-                facing,
-                pan,
-                userTilt,
-                headPivot,
-                beamStart,
-                rigged,
-                flipped
-        );
-        nozzle = adjustNozzleForFacing(facing, blockPos, nozzle);
-        jetDirection = adjustDirectionForFacing(facing, jetDirection);
 
         if (!FireworkRenderDistances.isWithinClientFlameRange(nozzle.x, nozzle.y, nozzle.z)) {
             return;
@@ -99,15 +52,5 @@ public final class Flow2JetParticleSpawner {
                     velocity.z
             );
         }
-    }
-
-    private static Vec3 mirrorAroundBlockCenter(Vec3 world, BlockPos blockPos) {
-        double cx = blockPos.getX() + 0.5;
-        double cz = blockPos.getZ() + 0.5;
-        return new Vec3(2.0 * cx - world.x, world.y, 2.0 * cz - world.z);
-    }
-
-    private static Vector3f mirrorDirection(Vector3f direction) {
-        return new Vector3f(-direction.x(), direction.y(), -direction.z());
     }
 }
