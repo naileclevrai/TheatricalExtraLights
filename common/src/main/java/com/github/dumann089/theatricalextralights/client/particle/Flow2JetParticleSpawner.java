@@ -1,5 +1,6 @@
 package com.github.dumann089.theatricalextralights.client.particle;
 
+import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
 import com.github.dumann089.theatricalextralights.firework.FireworkRenderDistances;
 import com.github.dumann089.theatricalextralights.util.FixtureJetDirection;
 import net.fabricmc.api.EnvType;
@@ -36,8 +37,9 @@ public final class Flow2JetParticleSpawner {
     private Flow2JetParticleSpawner() {
     }
 
+    /** Vitesse de sortie, blocs/tick, fois la portee reglee dans la config. */
     public static float exitSpeed(float pressure) {
-        return SPEED_MIN + SPEED_RANGE * pressure;
+        return (SPEED_MIN + SPEED_RANGE * pressure) * TheatricalExtraLightsConfig.getCo2JetReach();
     }
 
     /** Distance du front du panache apres {@code ageTicks} ticks : v0 (1 - drag^age) / (1 - drag). */

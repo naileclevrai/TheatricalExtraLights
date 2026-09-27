@@ -201,6 +201,11 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(slider(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.flamebloomstrength",
                 0.1f, 3f, TheatricalExtraLightsConfig.getFlameBloomStrength(), 1, "",
                 TheatricalExtraLightsConfig::setFlameBloomStrength));
+        y += widgetHeight + rowGap;
+
+        addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.co2reach",
+                0.5f, 3f, TheatricalExtraLightsConfig.getCo2JetReach(), 1, "x",
+                TheatricalExtraLightsConfig::setCo2JetReach));
     }
 
     // Onglet Faisceau ------------------------------------------------------
