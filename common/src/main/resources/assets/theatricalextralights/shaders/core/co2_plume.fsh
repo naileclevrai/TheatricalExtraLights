@@ -22,6 +22,7 @@ uniform float Pressure;     // 0..1, intensite DMX
 uniform float Dissipate;    // 0 vanne ouverte .. 1 nuage dissipe : le gaz lache s'etale et se dilue
 uniform float FlowClock;    // horloge du gaz, ticks : ralentit une fois la vanne fermee
 uniform float ExitSpeed;    // vitesse de sortie du gaz, blocs/tick
+uniform float BaseFlow;     // debit courant a la buse / pression du panache : un fader qui descend amincit la base
 uniform float NozzleRadius; // rayon a la bouche
 uniform float FlashRadius;  // rayon apres la detente eclair
 uniform float ConeTan;      // tangente du demi-angle du cone
@@ -230,9 +231,11 @@ void main() {
                 float front = len + (n - 0.5) * 2.5;
                 d *= 1.0 - smoothstep(front - 1.8, front + 0.3, z);
                 d *= mix(1.0, 0.35, smoothstep(0.45 * len, len, z));
+                // Fader en descente : le gaz qui sort maintenant est plus maigre, le gaz deja parti non.
+                d *= mix(BaseFlow, 1.0, smoothstep(0.0, 2.5, zc));
                 // Coupure de vanne : derriere le front de coupure il n'y a plus de gaz. Bande large
                 // et brouillee par le bruit, pour une limite qui s'estompe au lieu de balayer.
-                if (CutFront > 0.0) {
+                if (CutFront > -10.0) {
                     d *= smoothstep(CutFront - 1.2, CutFront + 2.2, z + (n - 0.5) * 1.8);
                 }
                 if (d > 0.001) {
