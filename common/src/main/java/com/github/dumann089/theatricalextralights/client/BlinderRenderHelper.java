@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.function.Consumer;
 
@@ -74,17 +75,31 @@ public final class BlinderRenderHelper {
         }
     }
 
-    /** Part du halo d'un strobe a pleine puissance : une lampe seule, puis huit lampes. */
-    private static final float HALO_SHARE_ONE_LAMP = 0.55f;
-    private static final float HALO_SHARE_EIGHT_LAMPS = 1.0f;
+    /** Le verre de la lampe, tire vers le blanc : une lampe a pleine puissance brule au centre. */
+    private static final float LAMP_WHITEN = 0.5f;
+    /** Disque de la lampe elle-meme (ronde, tournee vers la camera), en multiple du demi-format de la lentille. */
+    private static final float LAMP_DISC_RADIUS = 1.4f;
+    private static final float LAMP_DISC_STRENGTH = 1.0f;
+    /** Bloom serre autour de chaque lampe. */
+    private static final float LAMP_BLOOM_RADIUS = 3.2f;
+    private static final float LAMP_BLOOM_STRENGTH = 0.7f;
+    /** Lueur de l'ensemble des lampes dans la haze, en multiple du demi-format de la rangee, dans la couleur de l'appareil. */
+    private static final float ARRAY_GLOW_RADIUS = 2.5f;
+    private static final float ARRAY_GLOW_STRENGTH = 0.5f;
+    private static final float ARRAY_HAZE_RADIUS = 5.0f;
+    private static final float ARRAY_HAZE_STRENGTH = 0.2f;
+    /** Part de la lueur d'ensemble : une lampe seule, puis huit lampes. */
+    private static final float ARRAY_SHARE_ONE_LAMP = 0.6f;
+    private static final float ARRAY_SHARE_EIGHT_LAMPS = 1.0f;
 
     private BlinderRenderHelper() {
     }
 
     /**
-     * Dessine les lampes allumees : face emissive et coeur surexpose par lampe (dans la pose vue),
-     * puis un halo pour l'ensemble (bloom vers la camera, lueur dans la haze devant la face).
-     * A appeler depuis un LazyRenderer.
+     * Dessine les lampes allumees : par lampe un verre emissif dans le plan de la lentille, un
+     * disque rond et brulant tourne vers la camera et un bloom serre ; pour la rangee, deux
+     * disques larges dans la couleur de l'appareil, la lueur dans la haze. A appeler depuis un
+     * LazyRenderer.
      *
      * @param viewPose      pose recue par le LazyRenderer (vue camera)
      * @param headTransform place une pose fraiche sur la tete : decalage du bloc puis preparePoseStack
@@ -98,10 +113,12 @@ public final class BlinderRenderHelper {
         }
         float level = Math.min(1f, intensity / 255f);
         int color = blockEntity.getColour();
-        int r = (color >> 16) & 0xFF;
-        int g = (color >> 8) & 0xFF;
-        int b = color & 0xFF;
+        int hot = whiten(color, LAMP_WHITEN);
+        int hr = (hot >> 16) & 0xFF;
+        int hg = (hot >> 8) & 0xFF;
+        int hb = hot & 0xFF;
         int a = (int) (level * 255f);
+        float lampRadius = Math.max(lamps.halfW(), lamps.halfH());
 
         for (float x : lamps.xs()) {
             for (float y : lamps.ys()) {
@@ -109,19 +126,44 @@ public final class BlinderRenderHelper {
                 viewPose.pushPose();
                 headTransform.accept(viewPose);
                 lamp.apply(viewPose);
-                StrobeVisualEffects.renderFace(bufferSource, viewPose, lamp, r, g, b, a);
-                StrobeVisualEffects.renderHotCore(bufferSource, viewPose, lamp, color, level);
+                StrobeVisualEffects.renderFace(bufferSource, viewPose, lamp, hr, hg, hb, a);
                 viewPose.popPose();
+
+                Vector3f centre = worldCentre(headTransform, lamp);
+                StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, hot,
+                        lampRadius * LAMP_DISC_RADIUS, level * LAMP_DISC_STRENGTH);
+                StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, centre, color,
+                        lampRadius * LAMP_BLOOM_RADIUS, level * LAMP_BLOOM_STRENGTH);
             }
         }
 
-        // Un seul halo pour la rangee : les lampes voisines fondent leur bloom en un pave.
-        PoseStack faceWorld = new PoseStack();
-        headTransform.accept(faceWorld);
-        lamps.array().apply(faceWorld);
-        float share = HALO_SHARE_ONE_LAMP + (HALO_SHARE_EIGHT_LAMPS - HALO_SHARE_ONE_LAMP)
+        // La rangee entiere baigne dans sa propre couleur : les lampes voisines fondent en un pave.
+        StrobeVisualEffects.Face array = lamps.array();
+        Vector3f arrayCentre = worldCentre(headTransform, array);
+        float arrayRadius = Math.max(array.halfW(), array.halfH());
+        float share = ARRAY_SHARE_ONE_LAMP + (ARRAY_SHARE_EIGHT_LAMPS - ARRAY_SHARE_ONE_LAMP)
                 * Math.min(1f, (lamps.count() - 1) / 7f);
-        StrobeVisualEffects.renderHalo(bufferSource, viewPose, camera, faceWorld, color, level * share);
+        StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
+                arrayRadius * ARRAY_GLOW_RADIUS, level * share * ARRAY_GLOW_STRENGTH);
+        StrobeVisualEffects.renderGlowDot(bufferSource, viewPose, camera, arrayCentre, color,
+                arrayRadius * ARRAY_HAZE_RADIUS, level * share * ARRAY_HAZE_STRENGTH);
+    }
+
+    /** Centre d'une face dans le repere camera (sans la vue), la ou les disques se dessinent. */
+    private static Vector3f worldCentre(Consumer<PoseStack> headTransform, StrobeVisualEffects.Face face) {
+        PoseStack world = new PoseStack();
+        headTransform.accept(world);
+        face.apply(world);
+        Matrix4f m = world.last().pose();
+        return new Vector3f(m.m30(), m.m31(), m.m32());
+    }
+
+    private static int whiten(int color, float amount) {
+        int r = (color >> 16) & 0xFF, g = (color >> 8) & 0xFF, b = color & 0xFF;
+        r += (int) ((255 - r) * amount);
+        g += (int) ((255 - g) * amount);
+        b += (int) ((255 - b) * amount);
+        return (r << 16) | (g << 8) | b;
     }
 
     /** Ancien rendu : rectangle colore sur la face, sans coeur ni halo. */
