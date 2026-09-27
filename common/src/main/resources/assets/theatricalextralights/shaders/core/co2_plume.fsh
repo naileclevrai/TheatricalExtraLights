@@ -84,47 +84,65 @@ float plumeRadius(float z) {
     return (flash + z * ConeTan) * head;
 }
 
-// Cylindre fini autour de l'axe, de zMin a zMax : borne de la marche.
-bool intersectCylinder(vec3 ro, vec3 rd, float radius, float zMin, float zMax, out float t0, out float t1) {
+// Cone fini autour de l'axe, rayon rBase a la buse et rBase + slope * z ensuite, de zMin a zMax :
+// borne de la marche, serree sur le panache pour ne pas marcher dans le vide.
+bool intersectPlumeBound(vec3 ro, vec3 rd, float rBase, float slope, float zMin, float zMax, out float t0, out float t1) {
     vec3 o = ro - Nozzle;
     float oz = dot(o, Axis);
     float dz = dot(rd, Axis);
-    vec3 op = o - Axis * oz;
-    vec3 dp = rd - Axis * dz;
-    float a = dot(dp, dp);
-    float b = 2.0 * dot(op, dp);
-    float c = dot(op, op) - radius * radius;
-    float tc0;
-    float tc1;
-    if (a < 1.0e-6) {
-        if (c > 0.0) return false;
-        tc0 = -1.0e9;
-        tc1 = 1.0e9;
-    } else {
-        float disc = b * b - 4.0 * a * c;
-        if (disc < 0.0) return false;
-        float s = sqrt(disc);
-        tc0 = (-b - s) / (2.0 * a);
-        tc1 = (-b + s) / (2.0 * a);
-    }
-    float tz0;
-    float tz1;
+    float ta;
+    float tb;
     if (abs(dz) < 1.0e-6) {
         if (oz < zMin || oz > zMax) return false;
-        tz0 = -1.0e9;
-        tz1 = 1.0e9;
+        ta = 0.0;
+        tb = 1.0e9;
     } else {
-        tz0 = (zMin - oz) / dz;
-        tz1 = (zMax - oz) / dz;
-        if (tz0 > tz1) {
-            float tmp = tz0;
-            tz0 = tz1;
-            tz1 = tmp;
+        ta = (zMin - oz) / dz;
+        tb = (zMax - oz) / dz;
+        if (ta > tb) {
+            float tmp = ta;
+            ta = tb;
+            tb = tmp;
         }
+        ta = max(ta, 0.0);
+        if (tb <= ta) return false;
     }
-    t0 = max(max(tc0, tz0), 0.0);
-    t1 = min(tc1, tz1);
-    return t1 > t0;
+    vec3 op = o - Axis * oz;
+    vec3 dp = rd - Axis * dz;
+    float rz = rBase + slope * oz;
+    float a = dot(dp, dp) - slope * slope * dz * dz;
+    float b = 2.0 * (dot(op, dp) - slope * dz * rz);
+    float c = dot(op, op) - rz * rz;
+    if (abs(a) < 1.0e-6) {
+        if (abs(b) < 1.0e-9) {
+            if (c > 0.0) return false;
+            t0 = ta;
+            t1 = tb;
+            return true;
+        }
+        float tr = -c / b;
+        if (b > 0.0) {
+            t0 = ta;
+            t1 = min(tb, tr);
+        } else {
+            t0 = max(ta, tr);
+            t1 = tb;
+        }
+        return t1 > t0;
+    }
+    if (a > 0.0) {
+        float disc = b * b - 4.0 * a * c;
+        if (disc < 0.0) return false;
+        float sq = sqrt(disc);
+        t0 = max(ta, (-b - sq) / (2.0 * a));
+        t1 = min(tb, (-b + sq) / (2.0 * a));
+        return t1 > t0;
+    }
+    // Rayon plus incline que la surface du cone (vue dans l'axe) : l'interieur est hors des racines,
+    // on garde toute la tranche, large mais sure.
+    t0 = ta;
+    t1 = tb;
+    return true;
 }
 
 void main() {
@@ -138,10 +156,17 @@ void main() {
     float k = Dissipate * Dissipate * (3.0 - 2.0 * Dissipate);
     float thin = pow(1.0 - Dissipate, 1.6);
     float spread = 1.0 + 1.2 * k;
-    float rMax = plumeRadius(len) * spread * 1.3 + 0.25;
+    if (thin < 0.002) {
+        discard;
+    }
+    // Borne : cone de la detente eclair a la tete gonflee, avec la marge du bord erode (rho < 1.6).
+    float zMax = len + 1.0;
+    float rBase = FlashRadius * spread * 1.6 + 0.1;
+    float rEnd = plumeRadius(len) * spread * 1.6 + 0.1;
+    float slope = max(rEnd - rBase, 0.0) / zMax;
     float t0;
     float t1;
-    if (!intersectCylinder(vec3(0.0), rd, rMax, -0.15, len + 1.0, t0, t1)) {
+    if (!intersectPlumeBound(vec3(0.0), rd, rBase, slope, -0.15, zMax, t0, t1)) {
         discard;
     }
     t1 = min(t1, sceneT - 0.02);
@@ -149,7 +174,10 @@ void main() {
         discard;
     }
 
-    int steps = clamp(StepCount, 12, 48);
+    // Pas d'environ 0.2 bloc : assez fin pour que le bruit ne saute pas d'une image a l'autre, et
+    // pas plus de pas que necessaire quand le rayon ne traverse que le flanc du panache.
+    int maxSteps = clamp(StepCount, 16, 48);
+    int steps = clamp(int(ceil((t1 - t0) / 0.2)), 8, maxSteps);
     float dt = (t1 - t0) / float(steps);
     float t = t0 + dt * ign(gl_FragCoord.xy);
 
