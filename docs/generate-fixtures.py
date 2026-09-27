@@ -366,6 +366,12 @@ FIXTURES += [
           + sum(([ch(f"Zone {z} red", "0 to 255", f"Red of RGB zone {z}."), ch(f"Zone {z} green", "0 to 255", f"Green of RGB zone {z}."),
                   ch(f"Zone {z} blue", "0 to 255", f"Blue of RGB zone {z}.")] for z in range(1, 9)), []),
           "Every segment and every zone on its own channel; the sparkle effect flashes segments individually."),
+        P("400-Channel Pixel Map (Bar + 96 Pixels)", ATOMIC_BAR + [ch(f"Bar segment {s}", "0 to 255", f"Level of white bar segment {s} under the bar's flashes.") for s in range(1, 10)]
+          + [ch("Plate intensity", "0 to 255", "Level of the RGB plates."), ch("Plate flash duration", "0 to 255", "Flash length of the plates."),
+             ch("Plate flash rate", "0 to 255", "0 continuous; 1 to 255 strobes the plates.")]
+          + sum(([ch(f"Pixel {p} dim", "0 to 255", f"Dimmer of pixel {p}."), ch(f"Pixel {p} red", "0 to 255", f"Red of pixel {p}."),
+                  ch(f"Pixel {p} green", "0 to 255", f"Green of pixel {p}."), ch(f"Pixel {p} blue", "0 to 255", f"Blue of pixel {p}.")] for p in range(1, 97)), []),
+          "Each plate is a grid of 12 columns by 4 rows. Pixels 1 to 48 are the top plate, 49 to 96 the bottom plate, row by row from the top, left to right, four channels each. Fits one universe."),
     ], ATOMIC_NOTES),
 ]
 

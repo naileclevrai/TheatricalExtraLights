@@ -25,6 +25,7 @@ import java.util.List;
  * <li>8 canaux Atomic + Aura : les plaques RGB comme retro-eclairage d'une seule couleur.</li>
  * <li>10 canaux compresse : tube (4) + plaque comme un seul pixel avec son propre strobe (6).</li>
  * <li>40 canaux pixel : tube (4) + 9 segments + plaque (3) + 8 zones RGB.</li>
+ * <li>400 canaux pixel map : tube (4) + 9 segments + plaque (3) + 96 pixels Dim/RGB (12 x 4 par plaque).</li>
  * </ol>
  */
 public class AtomicStrobeFixture extends Fixture {
@@ -57,6 +58,19 @@ public class AtomicStrobeFixture extends Fixture {
         return p;
     }
 
+    private static DMXPersonality pixelMap() {
+        DMXPersonality p = bar(new DMXPersonality(400, "400-Channel Pixel Map (Bar + 96 Pixels)"));
+        for (int i = 1; i <= 9; i++) {
+            p.addSlot(AtomicSlots.segment(i));
+        }
+        p.addSlot(AtomicSlots.PLATE_INTENSITY).addSlot(AtomicSlots.PLATE_DURATION).addSlot(AtomicSlots.PLATE_RATE);
+        for (int pixel = 1; pixel <= 96; pixel++) {
+            p.addSlot(AtomicSlots.pixelDim(pixel)).addSlot(AtomicSlots.pixelRed(pixel))
+                    .addSlot(AtomicSlots.pixelGreen(pixel)).addSlot(AtomicSlots.pixelBlue(pixel));
+        }
+        return p;
+    }
+
     private static final List<DMXPersonality> PERSONALITIES = List.of(
             legacy(),
             new DMXPersonality(1, "1-Channel Strobe").addSlot(AtomicSlots.STROBE),
@@ -67,7 +81,8 @@ public class AtomicStrobeFixture extends Fixture {
             bar(new DMXPersonality(10, "10-Channel Compressed (Bar + Plate)"))
                     .addSlot(AtomicSlots.PLATE_INTENSITY).addSlot(AtomicSlots.PLATE_DURATION).addSlot(AtomicSlots.PLATE_RATE)
                     .addSlot(AtomicSlots.PLATE_RED).addSlot(AtomicSlots.PLATE_GREEN).addSlot(AtomicSlots.PLATE_BLUE),
-            pixel()
+            pixel(),
+            pixelMap()
     );
 
     private static final ResourceLocation TILT_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/atomic_strobe/atomic_strobe_tilt");

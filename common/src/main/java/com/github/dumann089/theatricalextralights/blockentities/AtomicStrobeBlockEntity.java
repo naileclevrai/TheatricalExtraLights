@@ -38,11 +38,17 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
     public static final int MODE_AURA_8CH = 3;
     public static final int MODE_COMPRESSED_10CH = 4;
     public static final int MODE_PIXEL_40CH = 5;
-    private static final int[] CHANNEL_COUNTS = {34, 1, 4, 8, 10, 40};
+    public static final int MODE_PIXELMAP_400CH = 6;
+    private static final int[] CHANNEL_COUNTS = {34, 1, 4, 8, 10, 40, 400};
 
     public static final int RGB_ZONE_COUNT = 8;
     public static final int WHITE_SEGMENT_COUNT = 9;
-    public static final int MAX_CHANNELS = 40;
+    /** Chaque plaque est une grille de 12 x 4 pixels ; les zones en pilotent trois colonnes. */
+    public static final int PIXEL_COLS = 12;
+    public static final int PIXEL_ROWS = 4;
+    public static final int PLATE_PIXELS = PIXEL_COLS * PIXEL_ROWS;
+    public static final int PIXEL_COUNT = 2 * PLATE_PIXELS;
+    public static final int MAX_CHANNELS = 400;
 
     private static final float MIN_LIGHT_SPREAD = 18.0f;
     private static final float MAX_LIGHT_SPREAD = 40.0f;
@@ -65,7 +71,11 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
     private int plateIntensity;
     private int plateDuration;
     private int plateRate;
+    /** Couleur moyenne par zone, deduite des pixels ; sert a la lumiere dynamique et au halo. */
     private final int[] plateRgb = new int[RGB_ZONE_COUNT * 3];
+    private final int[] zoneBright = new int[RGB_ZONE_COUNT];
+    /** Dim, R, G, B par pixel : plaque haute puis basse, rangee par rangee de haut en bas, de gauche a droite. */
+    private final int[] pixels = new int[PIXEL_COUNT * 4];
 
     private AtomicZoneLight[] zoneLights;
 
@@ -191,6 +201,18 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
                     plateRgb[i] = ch(16 + i);
                 }
             }
+            case MODE_PIXELMAP_400CH -> {
+                readBar();
+                for (int i = 0; i < WHITE_SEGMENT_COUNT; i++) {
+                    barSegments[i] = ch(4 + i);
+                }
+                plateIntensity = ch(13);
+                plateDuration = ch(14);
+                plateRate = ch(15);
+                for (int i = 0; i < PIXEL_COUNT * 4; i++) {
+                    pixels[i] = ch(16 + i);
+                }
+            }
             default -> {
                 // Historique : zones et segments en niveaux directs, tout allume en continu.
                 for (int i = 0; i < RGB_ZONE_COUNT * 3; i++) {
@@ -210,6 +232,73 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
         if (personality != MODE_LEGACY) {
             focus = 255;
         }
+        if (personality == MODE_PIXELMAP_400CH) {
+            zonesFromPixels();
+        } else {
+            pixelsFromZones();
+        }
+    }
+
+    /** Index d'un pixel : plaque 0 haute / 1 basse, rangee 0 en haut, colonne 0 a gauche. */
+    public static int pixelIndex(int plate, int row, int col) {
+        return plate * PLATE_PIXELS + row * PIXEL_COLS + col;
+    }
+
+    private static int zoneOfPixel(int pixel) {
+        int plate = pixel / PLATE_PIXELS;
+        int col = (pixel % PLATE_PIXELS) % PIXEL_COLS;
+        return plate * 4 + col / (PIXEL_COLS / 4);
+    }
+
+    /** Modes par zone : chaque pixel prend la couleur de sa zone, a plein dimmer. */
+    private void pixelsFromZones() {
+        for (int p = 0; p < PIXEL_COUNT; p++) {
+            int zone = zoneOfPixel(p);
+            pixels[p * 4] = 255;
+            pixels[p * 4 + 1] = plateRgb[zone * 3];
+            pixels[p * 4 + 2] = plateRgb[zone * 3 + 1];
+            pixels[p * 4 + 3] = plateRgb[zone * 3 + 2];
+        }
+        for (int zone = 0; zone < RGB_ZONE_COUNT; zone++) {
+            zoneBright[zone] = Math.max(plateRgb[zone * 3], Math.max(plateRgb[zone * 3 + 1], plateRgb[zone * 3 + 2]));
+        }
+    }
+
+    /** Mode pixel map : la zone resume ses pixels, niveau max et couleur moyenne ponderee. */
+    private void zonesFromPixels() {
+        long[] r = new long[RGB_ZONE_COUNT], g = new long[RGB_ZONE_COUNT], b = new long[RGB_ZONE_COUNT], w = new long[RGB_ZONE_COUNT];
+        Arrays.fill(zoneBright, 0);
+        for (int p = 0; p < PIXEL_COUNT; p++) {
+            int zone = zoneOfPixel(p);
+            int dim = pixels[p * 4];
+            int bright = Math.max(pixels[p * 4 + 1], Math.max(pixels[p * 4 + 2], pixels[p * 4 + 3])) * dim / 255;
+            zoneBright[zone] = Math.max(zoneBright[zone], bright);
+            r[zone] += (long) pixels[p * 4 + 1] * bright;
+            g[zone] += (long) pixels[p * 4 + 2] * bright;
+            b[zone] += (long) pixels[p * 4 + 3] * bright;
+            w[zone] += bright;
+        }
+        for (int zone = 0; zone < RGB_ZONE_COUNT; zone++) {
+            plateRgb[zone * 3] = w[zone] > 0 ? (int) (r[zone] / w[zone]) : 0;
+            plateRgb[zone * 3 + 1] = w[zone] > 0 ? (int) (g[zone] / w[zone]) : 0;
+            plateRgb[zone * 3 + 2] = w[zone] > 0 ? (int) (b[zone] / w[zone]) : 0;
+        }
+    }
+
+    public int pixelDim(int pixel) {
+        return pixels[pixel * 4];
+    }
+
+    public int pixelRed(int pixel) {
+        return pixels[pixel * 4 + 1];
+    }
+
+    public int pixelGreen(int pixel) {
+        return pixels[pixel * 4 + 2];
+    }
+
+    public int pixelBlue(int pixel) {
+        return pixels[pixel * 4 + 3];
     }
 
     private void readBar() {
@@ -238,7 +327,7 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
         if (plateIntensity > 0) {
             for (int zone = 0; zone < RGB_ZONE_COUNT; zone++) {
                 int r = plateRgb[zone * 3], g = plateRgb[zone * 3 + 1], b = plateRgb[zone * 3 + 2];
-                int bright = Math.max(r, Math.max(g, b)) * plateIntensity / 255;
+                int bright = zoneBright[zone] * plateIntensity / 255;
                 peak = Math.max(peak, bright);
                 rWeighted += (long) r * bright;
                 gWeighted += (long) g * bright;
@@ -327,8 +416,7 @@ public class AtomicStrobeBlockEntity extends ExtraLightsLightBlockEntity impleme
     }
 
     private int zoneBrightness(int zone) {
-        int base = zone * 3;
-        return Math.max(plateRgb[base], Math.max(plateRgb[base + 1], plateRgb[base + 2]));
+        return zoneBright[zone];
     }
 
     /** Couleur moyenne de la plaque, ponderee par la luminosite des zones ; blanc si tout est noir. */
