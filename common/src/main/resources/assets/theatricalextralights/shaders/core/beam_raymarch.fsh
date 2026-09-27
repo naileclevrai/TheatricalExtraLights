@@ -670,7 +670,10 @@ void main() {
             t
         );
 
-        float gobo = sampleGobo(
+        // Nappe de barre : pas de gobo. Le gobo « ouvert » est un disque a bord sombre, et une nappe
+        // rectangulaire large en depasse aux deux bouts : ses derniers 9 % de chaque cote lisaient du
+        // noir, une barre entiere au bout d'une chaine.
+        float gobo = ColorRamp > 0.5 ? 1.0 : sampleGobo(
             toPos,
             zDist
         );
