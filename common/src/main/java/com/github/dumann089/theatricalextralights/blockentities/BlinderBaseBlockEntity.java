@@ -102,6 +102,19 @@ public abstract class BlinderBaseBlockEntity extends ExtraLightsLightBlockEntity
         return 255;
     }
 
+    /**
+     * Distance a laquelle la lumiere dynamique se pose devant l'appareil. Par defaut le raytrace
+     * de Theatrical va jusqu'a l'obstacle, souvent le fond de la salle, et le plateau sous le
+     * blinder reste noir ; un blinder arrose tout ce qui l'entoure, sa lumiere reste pres de lui
+     * et c'est son rayon (28 a 55 blocs selon le modele) qui porte sur la scene.
+     */
+    private static final float EMISSION_DISTANCE = 10.0f;
+
+    @Override
+    public float getMaxLightDistance() {
+        return EMISSION_DISTANCE;
+    }
+
     @Override
     public float getLightSpread() {
         return (float) getFixture().getLightRadius();
