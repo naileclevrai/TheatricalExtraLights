@@ -21,9 +21,9 @@ public class Co2JetCoreParticle extends Co2FogParticle {
     /** @param pressure 0..1, intensite DMX. */
     Co2JetCoreParticle(ClientLevel level, Vec3 pos, Vec3 velocity, RandomSource random, float pressure) {
         super(level, pos, velocity, spriteSet, random,
-                0.10f + random.nextFloat() * 0.06f,
-                (0.30f + random.nextFloat() * 0.15f) * (0.8f + 0.2f * pressure),
-                0.30f + random.nextFloat() * 0.10f,
+                0.05f + random.nextFloat() * 0.03f,
+                (0.16f + random.nextFloat() * 0.08f) * (0.8f + 0.2f * pressure),
+                0.28f + random.nextFloat() * 0.08f,
                 DRAG,
                 TURBULENCE,
                 5 + random.nextInt(4));

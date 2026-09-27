@@ -51,12 +51,13 @@ def sprite(index):
             r = math.hypot(dx, dy)
             ang = math.atan2(dy, dx)
             wobble = 0.5 * math.sin(2 * ang + phases[0]) + 0.3 * math.sin(3 * ang + phases[1]) + 0.2 * math.sin(5 * ang + phases[2])
-            boundary = 0.92 * (0.80 + 0.20 * (0.5 + 0.5 * wobble))
+            boundary = 0.92 * (0.85 + 0.15 * (0.5 + 0.5 * wobble))
             # Plateau dense au centre, bord doux sur les 60 % exterieurs.
-            edge = clamp((1.0 - r / boundary) / 0.6) ** 1.2
+            edge = clamp((1.0 - r / boundary) / 0.65) ** 1.3
             n = fbm(octaves, (px + 0.5) / SIZE, (py + 0.5) / SIZE)
             lump = clamp(0.55 + 0.9 * (n - 0.5))
-            a = clamp(edge * (0.55 + 0.45 * lump) * (0.75 + 0.5 * n))
+            # Contraste doux : les grumeaux se lisent en masse, pas en chou-fleur.
+            a = clamp(edge * (0.70 + 0.30 * lump) * (0.85 + 0.30 * n))
             v = int(round(255 * (0.92 + 0.08 * n)))
             row += [v, v, 255, int(round(255 * a))]
         rows.append(row)
