@@ -69,13 +69,14 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
      * @param cutFront front de coupure depuis la buse, blocs ; negatif tant que la vanne est ouverte
      * @param pressure 0..1
      * @param dissipate 0 vanne ouverte .. 1 nuage dissipe, apres la fermeture
-     * @param scroll   defilement du bruit le long du jet, blocs
+     * @param flowClock horloge du gaz en ticks, qui ralentit une fois la vanne fermee
+     * @param exitSpeed vitesse de sortie du gaz, blocs/tick
      */
-    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float scroll) {
-        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure, dissipate, scroll);
+    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed) {
+        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure, dissipate, flowClock, exitSpeed);
     }
 
-    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float scroll) {
+    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed) {
         if (!available() || length <= 0.05f) {
             return;
         }
@@ -97,7 +98,8 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         s.cutFront = cutFront;
         s.pressure = pressure;
         s.dissipate = dissipate;
-        s.scroll = scroll;
+        s.flowClock = flowClock;
+        s.exitSpeed = exitSpeed;
     }
 
     @Override
@@ -157,7 +159,8 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("CutFront").set(s.cutFront);
                 shader.safeGetUniform("Pressure").set(s.pressure);
                 shader.safeGetUniform("Dissipate").set(s.dissipate);
-                shader.safeGetUniform("Scroll").set(s.scroll);
+                shader.safeGetUniform("FlowClock").set(s.flowClock);
+                shader.safeGetUniform("ExitSpeed").set(s.exitSpeed);
                 shader.safeGetUniform("NozzleRadius").set(NOZZLE_RADIUS);
                 shader.safeGetUniform("FlashRadius").set(FLASH_RADIUS);
                 shader.safeGetUniform("ConeTan").set(CONE_TAN);
@@ -273,6 +276,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         float cutFront;
         float pressure;
         float dissipate;
-        float scroll;
+        float flowClock;
+        float exitSpeed;
     }
 }

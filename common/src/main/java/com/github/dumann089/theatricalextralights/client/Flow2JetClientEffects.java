@@ -37,8 +37,6 @@ public final class Flow2JetClientEffects {
     private static final Map<BlockPos, PlumeState> PLUMES = new ConcurrentHashMap<>();
     /** Vanne fermee : le nuage lache se dilue et disparait en trois secondes et demie. */
     private static final float DISSIPATE_TICKS = 70f;
-    /** Defilement du bruit le long du jet, blocs/tick : la vitesse apparente du gaz. */
-    private static final float SCROLL_SPEED = 0.6f;
 
     private Flow2JetClientEffects() {
     }
@@ -149,14 +147,14 @@ public final class Flow2JetClientEffects {
         float length = Flow2JetParticleSpawner.plumeLength(plume.pressure, age);
         float cutFront = -1f;
         float dissipate = 0f;
-        float scroll = SCROLL_SPEED * age;
+        // Horloge du gaz : le temps ecoule, qui ralentit une fois la vanne fermee (le gaz lache freine).
+        float flowClock = age;
         if (plume.closeTick >= 0) {
             float sinceClose = (float) Math.max(0.0, now - plume.closeTick);
             cutFront = Flow2JetParticleSpawner.CUT_SPEED * sinceClose;
             dissipate = Math.min(1f, sinceClose / DISSIPATE_TICKS);
-            // Le gaz lache ralentit : le bruit defile moins vite, sans saut au moment de la fermeture.
             float openDuration = (float) Math.max(0.0, plume.closeTick - plume.openTick);
-            scroll = SCROLL_SPEED * (openDuration + sinceClose * (1f - 0.5f * dissipate));
+            flowClock = openDuration + sinceClose * (1f - 0.8f * dissipate);
             // On n'oublie le panache qu'une fois sa densite a zero : la coupure seule laisserait une
             // tete encore visible disparaitre d'un coup.
             if (dissipate >= 1f) {
@@ -168,7 +166,8 @@ public final class Flow2JetClientEffects {
         if (!FireworkRenderDistances.isWithinClientFlameRange(jet.nozzle().x, jet.nozzle().y, jet.nozzle().z)) {
             return;
         }
-        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, plume.pressure, dissipate, scroll);
+        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, plume.pressure, dissipate, flowClock,
+                Flow2JetParticleSpawner.exitSpeed(plume.pressure));
     }
 
     public static void stop(BlockPos pos) {

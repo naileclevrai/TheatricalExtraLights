@@ -20,7 +20,8 @@ uniform float PlumeLength;  // distance du front depuis la buse, blocs
 uniform float CutFront;     // front de coupure depuis la buse, blocs ; negatif = vanne ouverte
 uniform float Pressure;     // 0..1, intensite DMX
 uniform float Dissipate;    // 0 vanne ouverte .. 1 nuage dissipe : le gaz lache s'etale et se dilue
-uniform float Scroll;       // defilement du bruit le long du jet, blocs
+uniform float FlowClock;    // horloge du gaz, ticks : ralentit une fois la vanne fermee
+uniform float ExitSpeed;    // vitesse de sortie du gaz, blocs/tick
 uniform float NozzleRadius; // rayon a la bouche
 uniform float FlashRadius;  // rayon apres la detente eclair
 uniform float ConeTan;      // tangente du demi-angle du cone
@@ -75,6 +76,19 @@ vec3 reconstructViewPos(vec2 uv, float depth) {
     vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 view = InvProjMat * clip;
     return view.xyz / max(view.w, 1.0e-6);
+}
+
+const float DRAG = 0.905;
+const float LN_DRAG = -0.09983;   // ln(0.905)
+
+// Temps de vol du gaz jusqu'a z. Avec le freinage par tick, v(z) = v0 (1 - z / Linf) : rapide a la
+// buse, presque nul a la tete. Plancher a 0.2 v0 pour ne pas tasser le bruit a l'infini pres du front.
+float travelTime(float z) {
+    float linf = ExitSpeed / (1.0 - DRAG);
+    float zc = 0.8 * linf;
+    float z1 = clamp(z, 0.0, zc);
+    float t = log(1.0 - z1 / linf) / LN_DRAG;
+    return t + max(z - zc, 0.0) / (0.2 * ExitSpeed);
 }
 
 // Rayon du panache a la distance z : detente eclair sur le premier demi-bloc, cone, tete qui gonfle.
@@ -174,11 +188,12 @@ void main() {
         discard;
     }
 
-    // Pas d'environ 0.2 bloc : assez fin pour que le bruit ne saute pas d'une image a l'autre, et
-    // pas plus de pas que necessaire quand le rayon ne traverse que le flanc du panache.
+    // Pas fixe d'environ 0.2 bloc, le dernier tronque : les echantillons ne glissent pas quand le
+    // nombre de pas change d'une image a l'autre. Au-dela du plafond de qualite, le pas s'allonge.
+    float marchLen = t1 - t0;
     int maxSteps = clamp(StepCount, 16, 48);
-    int steps = clamp(int(ceil((t1 - t0) / 0.2)), 8, maxSteps);
-    float dt = (t1 - t0) / float(steps);
+    float dt = max(0.2, marchLen / float(maxSteps));
+    int steps = min(maxSteps, int(ceil(marchLen / dt)));
     float t = t0 + dt * ign(gl_FragCoord.xy);
 
     // Lumiere de scene : depuis la camera, relevee vers le haut.
@@ -189,7 +204,7 @@ void main() {
     vec3 accum = vec3(0.0);
     float alpha = 0.0;
     for (int i = 0; i < 48; i++) {
-        if (i >= steps || alpha > 0.985) {
+        if (i >= steps || t > t1 || alpha > 0.985) {
             break;
         }
         vec3 p = rd * t;
@@ -202,10 +217,12 @@ void main() {
             float radius = plumeRadius(zc) * spread;
             float rho = r / max(radius, 1.0e-3);
             if (rho < 1.6) {
-                // Bruit dans le repere du jet, fixe dans le monde, qui defile avec le gaz.
-                vec3 q = vec3(dot(perp, SideU), dot(perp, SideV), z - Scroll);
+                // Bruit lagrangien : chaque parcelle de gaz garde sa valeur de bruit (son instant de
+                // depart) et avance a la vitesse locale du gaz, vite a la buse, lentement a la tete.
+                float label = ExitSpeed * (FlowClock - travelTime(zc));
+                vec3 q = vec3(dot(perp, SideU), dot(perp, SideV), label);
                 float n = fbm(q * 1.5);
-                float n2 = vnoise(q * 5.0 + vec3(3.1, 7.7, -Time * 0.35));
+                float n2 = vnoise(q * 5.0 + vec3(3.1, 7.7, 0.0));
                 // Bord erode par les volutes.
                 float edge = 1.0 - rho + (n - 0.5) * (0.9 + 0.6 * k) + (n2 - 0.5) * 0.3 - 0.5 * k;
                 float d = smoothstep(0.0, 0.45, edge);
