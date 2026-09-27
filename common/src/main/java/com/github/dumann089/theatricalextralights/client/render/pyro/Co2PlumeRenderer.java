@@ -71,12 +71,13 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
      * @param dissipate 0 vanne ouverte .. 1 nuage dissipe, apres la fermeture
      * @param flowClock horloge du gaz en ticks, qui ralentit une fois la vanne fermee
      * @param exitSpeed vitesse de sortie du gaz, blocs/tick
+     * @param baseFlow  debit courant a la buse rapporte a la pression du panache, 0..1
      */
-    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed) {
-        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure, dissipate, flowClock, exitSpeed);
+    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed, float baseFlow) {
+        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure, dissipate, flowClock, exitSpeed, baseFlow);
     }
 
-    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed) {
+    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float flowClock, float exitSpeed, float baseFlow) {
         if (!available() || length <= 0.05f) {
             return;
         }
@@ -100,6 +101,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         s.dissipate = dissipate;
         s.flowClock = flowClock;
         s.exitSpeed = exitSpeed;
+        s.baseFlow = baseFlow;
     }
 
     @Override
@@ -161,6 +163,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("Dissipate").set(s.dissipate);
                 shader.safeGetUniform("FlowClock").set(s.flowClock);
                 shader.safeGetUniform("ExitSpeed").set(s.exitSpeed);
+                shader.safeGetUniform("BaseFlow").set(s.baseFlow);
                 shader.safeGetUniform("NozzleRadius").set(NOZZLE_RADIUS);
                 shader.safeGetUniform("FlashRadius").set(FLASH_RADIUS);
                 shader.safeGetUniform("ConeTan").set(CONE_TAN);
@@ -278,5 +281,6 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         float dissipate;
         float flowClock;
         float exitSpeed;
+        float baseFlow;
     }
 }

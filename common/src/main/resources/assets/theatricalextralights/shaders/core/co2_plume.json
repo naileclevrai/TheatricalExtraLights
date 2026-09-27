@@ -34,6 +34,7 @@
         { "name": "Dissipate", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "FlowClock", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "ExitSpeed", "type": "float", "count": 1, "values": [ 0.85 ] },
+        { "name": "BaseFlow", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "NozzleRadius", "type": "float", "count": 1, "values": [ 0.06 ] },
         { "name": "FlashRadius", "type": "float", "count": 1, "values": [ 0.22 ] },
         { "name": "ConeTan", "type": "float", "count": 1, "values": [ 0.105 ] },

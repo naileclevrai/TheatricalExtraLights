@@ -15,6 +15,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -37,6 +38,8 @@ public final class Flow2JetClientEffects {
     private static final Map<BlockPos, PlumeState> PLUMES = new ConcurrentHashMap<>();
     /** Vanne fermee : le nuage lache se dilue et disparait en trois secondes et demie. */
     private static final float DISSIPATE_TICKS = 70f;
+    /** Depart du front de coupure sous la buse : la bande (3.4 blocs, brouillee de 1.8) est hors du gaz. */
+    private static final float CUT_START = -3.5f;
 
     private Flow2JetClientEffects() {
     }
@@ -97,8 +100,18 @@ public final class Flow2JetClientEffects {
             if (plume.openTick < 0 || plume.closeTick >= 0) {
                 plume.openTick = gameTime;
                 plume.closeTick = -1;
+                plume.pressure = intensityFactor;
+                plume.prevPressure = intensityFactor;
+                plume.flow = intensityFactor;
+                plume.prevFlow = intensityFactor;
+            } else {
+                // La pression qui fixe la longueur ne fait que monter : le gaz deja parti ne revient
+                // pas quand le fader descend. Le debit courant, lui, suit le niveau DMX.
+                plume.prevPressure = plume.pressure;
+                plume.pressure = Math.max(plume.pressure, intensityFactor);
+                plume.prevFlow = plume.flow;
+                plume.flow = intensityFactor;
             }
-            plume.pressure = intensityFactor;
 
             Flow2JetDissipation.markRunning(pos);
             WAS_ACTIVE.put(pos, true);
@@ -113,8 +126,13 @@ public final class Flow2JetClientEffects {
             }
         } else {
             PlumeState plume = PLUMES.get(pos);
-            if (plume != null && plume.closeTick < 0) {
-                plume.closeTick = gameTime;
+            if (plume != null) {
+                plume.prevPressure = plume.pressure;
+                plume.prevFlow = plume.flow;
+                plume.flow = 0f;
+                if (plume.closeTick < 0) {
+                    plume.closeTick = gameTime;
+                }
             }
             ACTIVE_TICKS.remove(pos);
             boolean wasPumping = Boolean.TRUE.equals(WAS_ACTIVE.get(pos))
@@ -144,14 +162,20 @@ public final class Flow2JetClientEffects {
         }
         double now = level.getGameTime() + (double) partialTick;
         float age = (float) Math.max(0.0, now - plume.openTick);
-        float length = Flow2JetParticleSpawner.plumeLength(plume.pressure, age);
+        // Interpolation entre ticks : rien de ce que voit le shader ne doit sauter a 20 Hz.
+        float pressure = Mth.lerp(partialTick, plume.prevPressure, plume.pressure);
+        float flow = Mth.lerp(partialTick, plume.prevFlow, plume.flow);
+        float baseFlow = pressure > 1.0e-4f ? Mth.clamp(flow / pressure, 0f, 1f) : 0f;
+        float length = Flow2JetParticleSpawner.plumeLength(pressure, age);
         float cutFront = -1f;
         float dissipate = 0f;
         // Horloge du gaz : le temps ecoule, qui ralentit une fois la vanne fermee (le gaz lache freine).
         float flowClock = age;
         if (plume.closeTick >= 0) {
             float sinceClose = (float) Math.max(0.0, now - plume.closeTick);
-            cutFront = Flow2JetParticleSpawner.CUT_SPEED * sinceClose;
+            // La bande de coupure demarre sous la buse, entierement hors du panache, et remonte :
+            // l'instant de la fermeture ne change rien a l'image.
+            cutFront = CUT_START + Flow2JetParticleSpawner.CUT_SPEED * sinceClose;
             dissipate = Math.min(1f, sinceClose / DISSIPATE_TICKS);
             float openDuration = (float) Math.max(0.0, plume.closeTick - plume.openTick);
             flowClock = openDuration + sinceClose * (1f - 0.8f * dissipate);
@@ -166,8 +190,8 @@ public final class Flow2JetClientEffects {
         if (!FireworkRenderDistances.isWithinClientFlameRange(jet.nozzle().x, jet.nozzle().y, jet.nozzle().z)) {
             return;
         }
-        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, plume.pressure, dissipate, flowClock,
-                Flow2JetParticleSpawner.exitSpeed(plume.pressure));
+        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, pressure, dissipate, flowClock,
+                Flow2JetParticleSpawner.exitSpeed(pressure), baseFlow);
     }
 
     public static void stop(BlockPos pos) {
@@ -195,6 +219,11 @@ public final class Flow2JetClientEffects {
     private static final class PlumeState {
         long openTick = -1;
         long closeTick = -1;
+        /** Pression qui fixe vitesse et longueur : celle du gaz deja parti, ne fait que monter. */
         float pressure = 1f;
+        float prevPressure = 1f;
+        /** Debit courant a la buse, suit le niveau DMX ; 0 des que la vanne est fermee. */
+        float flow = 1f;
+        float prevFlow = 1f;
     }
 }
