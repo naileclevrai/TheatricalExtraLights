@@ -47,7 +47,7 @@ rgb_add = [{"from": [-14, 5.9375, 6.6875], "to": [30, 9.9375, 8.9375], "faces": 
 pitch = 44 / 46
 for i in range(46):
     c = -14 + (i + 0.5) * pitch
-    rgb_add.append({"from": [round(c - 0.36, 4), 6.4375, 6.4375], "to": [round(c + 0.36, 4), 9.4375, 6.6875],
+    rgb_add.append({"from": [round(c - 0.36, 4), 7.5775, 6.4375], "to": [round(c + 0.36, 4), 8.2975, 6.6875],
                     "faces": face_all(LENS_LB)})
 build("ledbar", "ledbar",
       lambda e: e["from"][1] == 5.9375 and e["to"][1] == 9.9375 and (
@@ -60,7 +60,7 @@ LENS_VL = [7, 1, 11, 5]
 v_add = []
 for i in range(46):
     c = -15 + i + 0.5
-    v_add.append({"from": [6.5, round(c - 0.36, 4), 12.8], "to": [9.5, round(c + 0.36, 4), 13],
+    v_add.append({"from": [7.64, round(c - 0.36, 4), 12.8], "to": [8.36, round(c + 0.36, 4), 13],
                   "faces": face_all(LENS_VL)})
 
 
@@ -88,7 +88,7 @@ def moving_add(x0, x1):
     add = [{"from": [x0, 13.25, 5.5], "to": [x1, 16.25, 10.75], "faces": face_all(BODY_VL)}]
     for i in range(round(x1 - x0)):
         c = x0 + i + 0.5
-        add.append({"from": [round(c - 0.36, 4), 13.5, 5.25], "to": [round(c + 0.36, 4), 16, 5.5],
+        add.append({"from": [round(c - 0.36, 4), 14.39, 5.25], "to": [round(c + 0.36, 4), 15.11, 5.5],
                     "faces": face_all(LENS_MB)})
     return add
 
