@@ -35,8 +35,8 @@ public final class Flow2JetClientEffects {
     private static final Map<BlockPos, Integer> ACTIVE_TICKS = new ConcurrentHashMap<>();
     /** Etat du panache volumetrique par machine : quand la vanne s'est ouverte, puis fermee. */
     private static final Map<BlockPos, PlumeState> PLUMES = new ConcurrentHashMap<>();
-    /** Vanne fermee : le nuage lache se dilue et disparait en deux secondes. */
-    private static final float DISSIPATE_TICKS = 40f;
+    /** Vanne fermee : le nuage lache se dilue et disparait en trois secondes et demie. */
+    private static final float DISSIPATE_TICKS = 70f;
     /** Defilement du bruit le long du jet, blocs/tick : la vitesse apparente du gaz. */
     private static final float SCROLL_SPEED = 0.6f;
 
@@ -157,7 +157,9 @@ public final class Flow2JetClientEffects {
             // Le gaz lache ralentit : le bruit defile moins vite, sans saut au moment de la fermeture.
             float openDuration = (float) Math.max(0.0, plume.closeTick - plume.openTick);
             scroll = SCROLL_SPEED * (openDuration + sinceClose * (1f - 0.5f * dissipate));
-            if (dissipate >= 1f || cutFront > length + 1.5f) {
+            // On n'oublie le panache qu'une fois sa densite a zero : la coupure seule laisserait une
+            // tete encore visible disparaitre d'un coup.
+            if (dissipate >= 1f) {
                 PLUMES.remove(pos);
                 return;
             }
