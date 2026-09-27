@@ -30,6 +30,8 @@ public final class Flow2JetClientEffects {
     private static final float LOOP_VOLUME_MIN = 0.006f;
     private static final float LOOP_VOLUME_RANGE = 0.009f;
     private static final Map<BlockPos, Boolean> WAS_ACTIVE = new ConcurrentHashMap<>();
+    /** Ticks depuis l'ouverture de la vanne, pour le coup de pression du depart. */
+    private static final Map<BlockPos, Integer> ACTIVE_TICKS = new ConcurrentHashMap<>();
 
     private Flow2JetClientEffects() {
     }
@@ -85,8 +87,10 @@ public final class Flow2JetClientEffects {
                 return;
             }
 
-            Flow2JetParticleSpawner.spawnJet(level, nozzle, jetDirection, (int) blockEntity.getIntensity(), level.random);
+            int ticksActive = ACTIVE_TICKS.compute(pos, (key, ticks) -> ticks == null ? 0 : Math.min(ticks + 1, 1_000_000));
+            Flow2JetParticleSpawner.spawnJet(level, nozzle, jetDirection, (int) blockEntity.getIntensity(), ticksActive, level.random);
         } else {
+            ACTIVE_TICKS.remove(pos);
             boolean wasPumping = Boolean.TRUE.equals(WAS_ACTIVE.get(pos))
                     || blockEntity.getPrevIntensity() > 0;
             if (wasPumping) {
@@ -100,6 +104,7 @@ public final class Flow2JetClientEffects {
 
     public static void stop(BlockPos pos) {
         WAS_ACTIVE.remove(pos);
+        ACTIVE_TICKS.remove(pos);
         Flow2JetDissipation.clear(pos);
         FixtureLoopSfx.release(pos);
     }
