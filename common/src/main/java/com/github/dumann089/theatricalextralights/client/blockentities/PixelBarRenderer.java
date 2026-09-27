@@ -10,6 +10,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.imabad.theatrical.client.LazyRenderers;
 import dev.imabad.theatrical.config.TheatricalConfig;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -88,6 +89,13 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
     private static final float PIXEL_BEAM_INTENSITY = 0.32f;
     /** Demi-epaisseur de la nappe en travers, en blocs : une ligne, pas un volume. */
     private static final float SHEET_HALF_THICKNESS = 0.04f;
+    /**
+     * Epaisseur minimale d'une nappe a l'ecran, en pixels. Une nappe de 0.08 bloc vue de loin ou de
+     * face fait moins d'un pixel : la plupart des rayons la ratent, les autres n'y traversent presque
+     * rien, et la ligne scintille puis disparait des qu'on s'eloigne de la barre. L'epaisseur suit
+     * donc la distance a la camera, et l'intensite baisse d'autant pour garder la meme luminosite.
+     */
+    private static final float MIN_SHEET_PIXELS = 3.0f;
     /** Lueur large et douce autour de chaque LED ; les lueurs voisines se rejoignent en un ruban. */
     private static final float DOT_GLOW_STRENGTH = 0.65f;
     /** Bloom serre autour de la LED : un halo vif, a une fraction du rayon de la lueur large. */
@@ -281,13 +289,27 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
         PoseStack beamPose = new PoseStack();
         preparePoseStack(blockEntity, beamPose, facing, partialTicks, isFlipped, blockstate, isHanging);
         beamPose.translate(s.faceX() + s.x(centre, 0f), s.faceY() + s.y(centre, 0f), s.faceZ());
-        // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe.
-        float thin = SHEET_HALF_THICKNESS / halfRun;
+        // Rayon de base = demi-largeur de la plage ; en travers, une epaisseur fixe, au moins
+        // quelques pixels a l'ecran.
+        float half = sheetHalfThickness(blockEntity);
+        float thin = half / halfRun;
         float widthScale = s.vertical() ? thin : 1f;
         float heightScale = s.vertical() ? 1f : thin;
-        // Couleur pleine, la luminosite passe dans l'intensite.
+        // Couleur pleine, la luminosite passe dans l'intensite ; une nappe epaissie pour l'ecran
+        // garde la meme lumiere, donc une densite moindre.
+        float gain = SHEET_HALF_THICKNESS / half;
         submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
-                null, 0, 0f, widthScale, heightScale, beamIndex, normalise(colour), intensity, halfRun);
+                null, 0, 0f, widthScale, heightScale, beamIndex, normalise(colour), intensity * gain, halfRun);
+    }
+
+    /** Demi-epaisseur de la nappe pour cette image : la valeur physique, ou ce que couvrent MIN_SHEET_PIXELS. */
+    private static float sheetHalfThickness(PixelBarBlockEntity blockEntity) {
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 cam = mc.gameRenderer.getMainCamera().getPosition();
+        double distance = cam.distanceTo(blockEntity.getBlockPos().getCenter());
+        double fov = Math.toRadians(mc.options.fov().get());
+        double blocksPerPixel = 2.0 * distance * Math.tan(fov * 0.5) / Math.max(1, mc.getWindow().getHeight());
+        return (float) Math.max(SHEET_HALF_THICKNESS, blocksPerPixel * MIN_SHEET_PIXELS * 0.5);
     }
 
     /** Une plage de LED voisines allumees, toutes couleurs confondues. */
