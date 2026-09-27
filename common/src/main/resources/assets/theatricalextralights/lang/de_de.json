@@ -354,5 +354,6 @@
   "tel.settings.laser.detail": "Laser-Detail (Segmente)",
   "tel.settings.laser.note": "Ohne Dunst bleiben nur die Auftreffpunkte sichtbar, wie in echt.",
   "tel.settings.flamebloom": "Flammen-Bloom",
+  "tel.settings.co2reach": "Reichweite CO₂-Jet",
   "tel.settings.flamebloomstrength": "Bloom"
 }

@@ -370,6 +370,7 @@
   "tel.settings.laser.detail": "Détail laser (segments)",
   "tel.settings.laser.note": "Sans brume, seuls les impacts restent visibles, comme en vrai.",
   "tel.settings.flamebloom": "Bloom des flammes",
+  "tel.settings.co2reach": "Portée du jet CO₂",
   "tel.settings.flamebloomstrength": "Bloom",
   "tel.command.config.opened": "Réglages Extra Lights ouverts.",
   "block.theatricalextralights.chcb4": "Color Block DB4 (12 canaux)",

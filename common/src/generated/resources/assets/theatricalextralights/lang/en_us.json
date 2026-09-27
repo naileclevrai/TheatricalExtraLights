@@ -383,6 +383,7 @@
   "tel.settings.laser.detail": "Laser detail (segments)",
   "tel.settings.laser.note": "Without haze only the impacts stay visible, as in real life.",
   "tel.settings.flamebloom": "Flame bloom",
+  "tel.settings.co2reach": "CO2 jet reach",
   "tel.settings.flamebloomstrength": "Bloom",
   "tel.command.config.opened": "Extra Lights settings opened.",
   "category.theatricalextralights": "Theatrical Extra Lights",
