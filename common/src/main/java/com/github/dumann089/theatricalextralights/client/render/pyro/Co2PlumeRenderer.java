@@ -68,12 +68,14 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
      * @param length   distance du front depuis la buse, blocs
      * @param cutFront front de coupure depuis la buse, blocs ; negatif tant que la vanne est ouverte
      * @param pressure 0..1
+     * @param dissipate 0 vanne ouverte .. 1 nuage dissipe, apres la fermeture
+     * @param scroll   defilement du bruit le long du jet, blocs
      */
-    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure) {
-        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure);
+    public static void submit(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float scroll) {
+        INSTANCE.enqueue(nozzle, axis, length, cutFront, pressure, dissipate, scroll);
     }
 
-    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure) {
+    private void enqueue(Vec3 nozzle, Vector3f axis, float length, float cutFront, float pressure, float dissipate, float scroll) {
         if (!available() || length <= 0.05f) {
             return;
         }
@@ -94,6 +96,8 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         s.length = length;
         s.cutFront = cutFront;
         s.pressure = pressure;
+        s.dissipate = dissipate;
+        s.scroll = scroll;
     }
 
     @Override
@@ -152,6 +156,8 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("PlumeLength").set(s.length);
                 shader.safeGetUniform("CutFront").set(s.cutFront);
                 shader.safeGetUniform("Pressure").set(s.pressure);
+                shader.safeGetUniform("Dissipate").set(s.dissipate);
+                shader.safeGetUniform("Scroll").set(s.scroll);
                 shader.safeGetUniform("NozzleRadius").set(NOZZLE_RADIUS);
                 shader.safeGetUniform("FlashRadius").set(FLASH_RADIUS);
                 shader.safeGetUniform("ConeTan").set(CONE_TAN);
@@ -201,7 +207,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
 
     /** Rayon maximal du panache : celui de la tete gonflee, comme dans le shader. */
     private static float maxRadius(Slot s) {
-        return (FLASH_RADIUS + s.length * CONE_TAN) * 1.7f * 1.3f + 0.25f;
+        return (FLASH_RADIUS + s.length * CONE_TAN) * 1.7f * (1f + 0.9f * s.dissipate) * 1.3f + 0.25f;
     }
 
     /** Boite englobante du cone, faces vers l'interieur comme la boite des faisceaux. */
@@ -266,5 +272,7 @@ public final class Co2PlumeRenderer extends LazyRenderers.LazyRenderer {
         float length;
         float cutFront;
         float pressure;
+        float dissipate;
+        float scroll;
     }
 }

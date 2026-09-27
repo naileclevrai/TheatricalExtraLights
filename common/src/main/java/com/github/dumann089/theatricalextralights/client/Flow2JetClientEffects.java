@@ -27,14 +27,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Flow2JetClientEffects {
     private static final double HEAR_DISTANCE = 48.0;
     private static final double HEAR_DISTANCE_SQ = HEAR_DISTANCE * HEAR_DISTANCE;
-    /** Volume très bas — le fichier co2.ogg est très fort à la source. */
-    private static final float LOOP_VOLUME_MIN = 0.006f;
-    private static final float LOOP_VOLUME_RANGE = 0.009f;
+    /** flow2jet.ogg est normalise a -1.7 dB crete : volume plein a pleine pression. */
+    private static final float LOOP_VOLUME_MIN = 0.55f;
+    private static final float LOOP_VOLUME_RANGE = 0.45f;
     private static final Map<BlockPos, Boolean> WAS_ACTIVE = new ConcurrentHashMap<>();
     /** Ticks depuis l'ouverture de la vanne, pour le coup de pression du depart (particules). */
     private static final Map<BlockPos, Integer> ACTIVE_TICKS = new ConcurrentHashMap<>();
     /** Etat du panache volumetrique par machine : quand la vanne s'est ouverte, puis fermee. */
     private static final Map<BlockPos, PlumeState> PLUMES = new ConcurrentHashMap<>();
+    /** Vanne fermee : le nuage lache se dilue et disparait en deux secondes. */
+    private static final float DISSIPATE_TICKS = 40f;
+    /** Defilement du bruit le long du jet, blocs/tick : la vitesse apparente du gaz. */
+    private static final float SCROLL_SPEED = 0.6f;
 
     private Flow2JetClientEffects() {
     }
@@ -140,13 +144,20 @@ public final class Flow2JetClientEffects {
         if (!Co2PlumeRenderer.available()) {
             return;
         }
-        float now = level.getGameTime() + partialTick;
-        float age = Math.max(0f, now - plume.openTick);
+        double now = level.getGameTime() + (double) partialTick;
+        float age = (float) Math.max(0.0, now - plume.openTick);
         float length = Flow2JetParticleSpawner.plumeLength(plume.pressure, age);
         float cutFront = -1f;
+        float dissipate = 0f;
+        float scroll = SCROLL_SPEED * age;
         if (plume.closeTick >= 0) {
-            cutFront = Flow2JetParticleSpawner.CUT_SPEED * Math.max(0f, now - plume.closeTick);
-            if (cutFront > length + 1.5f) {
+            float sinceClose = (float) Math.max(0.0, now - plume.closeTick);
+            cutFront = Flow2JetParticleSpawner.CUT_SPEED * sinceClose;
+            dissipate = Math.min(1f, sinceClose / DISSIPATE_TICKS);
+            // Le gaz lache ralentit : le bruit defile moins vite, sans saut au moment de la fermeture.
+            float openDuration = (float) Math.max(0.0, plume.closeTick - plume.openTick);
+            scroll = SCROLL_SPEED * (openDuration + sinceClose * (1f - 0.5f * dissipate));
+            if (dissipate >= 1f || cutFront > length + 1.5f) {
                 PLUMES.remove(pos);
                 return;
             }
@@ -155,7 +166,7 @@ public final class Flow2JetClientEffects {
         if (!FireworkRenderDistances.isWithinClientFlameRange(jet.nozzle().x, jet.nozzle().y, jet.nozzle().z)) {
             return;
         }
-        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, plume.pressure);
+        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, plume.pressure, dissipate, scroll);
     }
 
     public static void stop(BlockPos pos) {

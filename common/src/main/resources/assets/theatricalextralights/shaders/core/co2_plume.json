@@ -31,6 +31,8 @@
         { "name": "PlumeLength", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "CutFront", "type": "float", "count": 1, "values": [ -1.0 ] },
         { "name": "Pressure", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Dissipate", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "Scroll", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "NozzleRadius", "type": "float", "count": 1, "values": [ 0.06 ] },
         { "name": "FlashRadius", "type": "float", "count": 1, "values": [ 0.22 ] },
         { "name": "ConeTan", "type": "float", "count": 1, "values": [ 0.105 ] },
