@@ -363,10 +363,15 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         double distToVolume = Math.max(0.0, radial - radius);
 
         int beamSteps = qualitySteps;
-        if (distToVolume < 2.0) {
-            beamSteps = Math.max(4, qualitySteps / 4);
-        } else if (distToVolume < 8.0) {
-            beamSteps = Math.max(4, (qualitySteps * 2) / 5);
+        // Une nappe de barre (rampe de couleur) n'est marchee que sur son epaisseur : la marche est
+        // courte quelle que soit la distance, et la reduction de proximite ne faisait que degrader
+        // la haze quand on s'approche.
+        if (s.colorRampTexture == 0) {
+            if (distToVolume < 2.0) {
+                beamSteps = Math.max(4, qualitySteps / 4);
+            } else if (distToVolume < 8.0) {
+                beamSteps = Math.max(4, (qualitySteps * 2) / 5);
+            }
         }
 
         double mx = s.originX + s.dirX * s.scanLen * 0.5 - camPos.x;
