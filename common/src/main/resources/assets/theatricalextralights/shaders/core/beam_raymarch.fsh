@@ -280,6 +280,36 @@ bool intersectBounds(
         return false;
     }
 
+    if (ColorRamp > 0.5) {
+        // Nappe de barre LED : section rectangulaire et rayon constant, au lieu de l'ellipse du
+        // cone qui amincit la nappe vers ses deux bouts et efface la barre du bout d'une chaine.
+        float R = max(BaseRadius, 1.0e-3);
+        float q0 = ts0;
+        float q1 = ts1;
+        if (abs(du) > 1.0e-7) {
+            float a0 = (-R - ou) / du;
+            float a1 = (R - ou) / du;
+            q0 = max(q0, min(a0, a1));
+            q1 = min(q1, max(a0, a1));
+        } else if (abs(ou) > R) {
+            return false;
+        }
+        if (abs(dv) > 1.0e-7) {
+            float b0 = (-R - ov) / dv;
+            float b1 = (R - ov) / dv;
+            q0 = max(q0, min(b0, b1));
+            q1 = min(q1, max(b0, b1));
+        } else if (abs(ov) > R) {
+            return false;
+        }
+        if (q1 <= q0) {
+            return false;
+        }
+        tEnter = q0;
+        tExit = q1;
+        return true;
+    }
+
     float a = du * du + dv * dv - k * k * dzc * dzc;
     float b = 2.0 * (
         ou * du +
@@ -592,7 +622,7 @@ void main() {
                 t += dt;
                 continue;
             }
-            edgeU = 1.0 - smoothstep(0.9, 1.0, u01);
+            edgeU = 1.0 - smoothstep(0.96, 1.0, u01);
             radial01 = abs(v) / radius;
             rampTint = texture(Sampler5, vec2(clamp(0.5 + 0.5 * u / radius, 0.0, 1.0), 0.5)).rgb;
         }
