@@ -1,25 +1,23 @@
 package com.github.dumann089.theatricalextralights.client;
 
 import com.github.dumann089.theatricalextralights.blockentities.Flow2JetBlockEntity;
+import com.github.dumann089.theatricalextralights.client.blockentities.Flow2JetRenderer;
 import com.github.dumann089.theatricalextralights.client.particle.Flow2JetDissipation;
 import com.github.dumann089.theatricalextralights.client.particle.Flow2JetParticleSpawner;
 import com.github.dumann089.theatricalextralights.client.sfx.FixtureLoopSfx;
 import com.github.dumann089.theatricalextralights.firework.FireworkRenderDistances;
-import com.github.dumann089.theatricalextralights.fixtures.Flow2JetFixture;
 import com.github.dumann089.theatricalextralights.sounds.ModSounds;
 import com.github.dumann089.theatricalextralights.util.FixtureJetDirection;
-import com.github.dumann089.theatricalextralights.util.FixtureMountTransform;
 import dev.imabad.theatrical.TheatricalClient;
-import dev.imabad.theatrical.blocks.HangableBlock;
-import dev.imabad.theatrical.blocks.light.BaseLightBlock;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,43 +62,20 @@ public final class Flow2JetClientEffects {
             return;
         }
 
+        // Buse et axe du jet : la matrice qui dessine le modele, appliquee a la bouche de la buse
+        // et a l'axe +Y Blockbench. Pas de re-derivation a la main du facing / pan / tilt.
         float partial = minecraft.getFrameTime();
-        float pan = blockEntity.getInterpolatedPan(partial);
-        float userTilt = blockEntity.getInterpolatedTilt(partial);
-        float[] beamStart = blockEntity.getFixture().getBeamStartPosition();
-        float[] headPivot = blockEntity.getFixture().getPanRotationPosition();
-        Direction facing = blockEntity.getBlockState().getValue(BaseLightBlock.FACING);
-        boolean isRigged = blockEntity.getBlockState().getValue(HangableBlock.HANGING);
-        boolean isFlipped = blockEntity.isUpsideDown();
-        boolean isMounted = ((HangableBlock) blockEntity.getBlockState().getBlock())
-                .isHanging(blockEntity.getLevel(), pos);
-        boolean bodyFlip = Flow2JetFixture.shouldApplyBodyFlip(isFlipped, isMounted);
-
-        Vector3f jetDirection = FixtureJetDirection.directionFromFlow2JetPose(
-                pos,
-                facing,
-                pan,
-                userTilt,
-                headPivot,
-                beamStart,
-                isRigged,
-                bodyFlip
-        );
-        Vec3 nozzle = FixtureJetDirection.beamWorldPositionFlow2Jet(
-                pos,
-                facing,
-                pan,
-                userTilt,
-                headPivot,
-                beamStart,
-                isRigged,
-                bodyFlip
-        );
-        nozzle = Flow2JetParticleSpawner.adjustNozzleForFacing(facing, pos, nozzle);
-        jetDirection = Flow2JetParticleSpawner.adjustDirectionForFacing(facing, jetDirection);
-        // Keep CO₂ aligned with wrench mount (same transform as the model).
-        nozzle = FixtureMountTransform.transformWorldPoint(blockEntity, pos, nozzle);
-        jetDirection = FixtureMountTransform.transformDirection(blockEntity, jetDirection);
+        Matrix4f modelPose = Flow2JetRenderer.modelPose(blockEntity, partial);
+        float[] mouth = blockEntity.getFixture().getBeamStartPosition();
+        Vector4f nozzleLocal = modelPose.transform(new Vector4f(mouth[0], mouth[1], mouth[2], 1f));
+        Vec3 nozzle = new Vec3(pos.getX() + nozzleLocal.x, pos.getY() + nozzleLocal.y, pos.getZ() + nozzleLocal.z);
+        Vector4f axis = modelPose.transform(new Vector4f(0f, 1f, 0f, 0f));
+        Vector3f jetDirection = new Vector3f(axis.x, axis.y, axis.z);
+        if (jetDirection.lengthSquared() < 1.0e-8f) {
+            jetDirection.set(0f, 1f, 0f);
+        } else {
+            jetDirection.normalize();
+        }
 
         if (active) {
             Flow2JetDissipation.markRunning(pos);
@@ -110,19 +85,7 @@ public final class Flow2JetClientEffects {
                 return;
             }
 
-            Flow2JetParticleSpawner.spawnJet(
-                    level,
-                    pos,
-                    facing,
-                    pan,
-                    userTilt,
-                    headPivot,
-                    beamStart,
-                    isRigged,
-                    bodyFlip,
-                    (int) blockEntity.getIntensity(),
-                    level.random
-            );
+            Flow2JetParticleSpawner.spawnJet(level, nozzle, jetDirection, (int) blockEntity.getIntensity(), level.random);
         } else {
             boolean wasPumping = Boolean.TRUE.equals(WAS_ACTIVE.get(pos))
                     || blockEntity.getPrevIntensity() > 0;
