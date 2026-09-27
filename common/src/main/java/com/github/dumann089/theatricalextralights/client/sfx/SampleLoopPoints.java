@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import javax.sound.sampled.AudioFormat;
 import java.util.Collections;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,8 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * debut, puis boucle entre deux instants au lieu de reprendre a zero. Le jet CO2 joue ainsi
  * l'attaque de l'ouverture de vanne une fois, puis le souffle en boucle sans couture.
  *
- * <p>Les points doivent etre poses avant que le tampon soit attache a une source : le mixin sur
- * {@code Channel.attachStaticBuffer} appelle {@link #beforeAttach} juste avant.
+ * <p>OpenAL refuse les points sur un tampon deja attache a une source : le mixin sur
+ * {@code SoundBuffer.getAlBuffer} appelle {@link #onAlBufferReady} a la creation du tampon, avant
+ * tout attachement, vanilla ou d'un autre mod son.
  */
 @Environment(EnvType.CLIENT)
 public final class SampleLoopPoints {
@@ -65,20 +65,14 @@ public final class SampleLoopPoints {
         }
     }
 
-    /** Juste avant l'attache a une source : pose les points sur le tampon OpenAL, une seule fois. */
-    public static void beforeAttach(SoundBuffer buffer) {
+    /** Le tampon OpenAL vient d'etre cree pour cet echantillon : pose les points, une seule fois. */
+    public static void onAlBufferReady(SoundBuffer buffer, int alBuffer) {
         Points points = LOADED.get(buffer);
-        if (points == null) {
+        if (points == null || !APPLIED.add(alBuffer)) {
             return;
         }
         try {
-            SoundBufferAccessor access = (SoundBufferAccessor) buffer;
-            OptionalInt id = access.tel$getAlBuffer();
-            if (id.isEmpty() || !APPLIED.add(id.getAsInt())) {
-                return;
-            }
-            int alBuffer = id.getAsInt();
-            AudioFormat format = access.tel$getFormat();
+            AudioFormat format = ((SoundBufferAccessor) buffer).tel$getFormat();
             float rate = format.getSampleRate();
             int channels = Math.max(1, AL10.alGetBufferi(alBuffer, AL10.AL_CHANNELS));
             int bits = Math.max(8, AL10.alGetBufferi(alBuffer, AL10.AL_BITS));

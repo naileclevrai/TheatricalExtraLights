@@ -14,14 +14,19 @@ import java.util.concurrent.CompletableFuture;
 /** Retient les tampons des echantillons qui ont des points de boucle declares. */
 @Mixin(SoundBufferLibrary.class)
 public abstract class SoundBufferLibraryMixin {
-    @Inject(method = "getCompleteBuffer", at = @At("RETURN"))
+    @Inject(method = "getCompleteBuffer", at = @At("RETURN"), cancellable = true)
     private void tel$rememberLoopPointBuffer(ResourceLocation soundFile, CallbackInfoReturnable<CompletableFuture<SoundBuffer>> cir) {
         if (!SampleLoopPoints.hasPoints(soundFile)) {
             return;
         }
         CompletableFuture<SoundBuffer> future = cir.getReturnValue();
         if (future != null) {
-            future.thenAccept(buffer -> SampleLoopPoints.onBufferLoaded(soundFile, buffer));
+            // thenApply plutot que thenAccept : le moteur son recoit un futur qui n'est complete
+            // qu'une fois le tampon enregistre, donc il ne peut pas l'attacher avant.
+            cir.setReturnValue(future.thenApply(buffer -> {
+                SampleLoopPoints.onBufferLoaded(soundFile, buffer);
+                return buffer;
+            }));
         }
     }
 }
