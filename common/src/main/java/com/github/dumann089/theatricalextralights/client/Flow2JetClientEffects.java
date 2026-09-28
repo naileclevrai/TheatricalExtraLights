@@ -21,6 +21,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -36,6 +39,11 @@ public final class Flow2JetClientEffects {
     private static final Map<BlockPos, Integer> ACTIVE_TICKS = new ConcurrentHashMap<>();
     /** Etat du panache volumetrique par machine : quand la vanne s'est ouverte, puis fermee. */
     private static final Map<BlockPos, PlumeState> PLUMES = new ConcurrentHashMap<>();
+    /**
+     * Nuages deja lache par une vanne refermee, qui continuent de deriver et de se dissiper quand
+     * la vanne se rouvre : un nouveau declenchement ne relance pas tout l'effet, il ajoute un jet.
+     */
+    private static final Map<BlockPos, List<PlumeState>> RELEASED = new ConcurrentHashMap<>();
     /** Vanne fermee : le nuage lache se dilue et disparait en trois secondes et demie. */
     private static final float DISSIPATE_TICKS = 70f;
     /** Depart du front de coupure sous la buse : la bande (3.4 blocs, brouillee de 1.8) est hors du gaz. */
@@ -96,8 +104,17 @@ public final class Flow2JetClientEffects {
         JetPose jet = jetPose(blockEntity, minecraft.getFrameTime());
 
         if (active) {
-            PlumeState plume = PLUMES.computeIfAbsent(pos, key -> new PlumeState());
-            if (plume.openTick < 0 || plume.closeTick >= 0) {
+            PlumeState plume = PLUMES.get(pos);
+            if (plume != null && plume.closeTick >= 0) {
+                // Vanne rouverte pendant que le nuage precedent est en l'air : il garde sa vie propre.
+                RELEASED.computeIfAbsent(pos, key -> new ArrayList<>()).add(plume);
+                plume = null;
+            }
+            if (plume == null) {
+                plume = new PlumeState();
+                PLUMES.put(pos, plume);
+            }
+            if (plume.openTick < 0) {
                 plume.openTick = gameTime;
                 plume.closeTick = -1;
                 plume.pressure = intensityFactor;
@@ -153,13 +170,31 @@ public final class Flow2JetClientEffects {
      */
     public static void submitPlume(Flow2JetBlockEntity blockEntity, float partialTick) {
         BlockPos pos = blockEntity.getBlockPos();
+        if (!(blockEntity.getLevel() instanceof ClientLevel level) || !Co2PlumeRenderer.available()) {
+            return;
+        }
+        List<PlumeState> released = RELEASED.get(pos);
+        if (released != null) {
+            synchronized (released) {
+                Iterator<PlumeState> it = released.iterator();
+                while (it.hasNext()) {
+                    if (!submitOne(blockEntity, level, it.next(), partialTick)) {
+                        it.remove();
+                    }
+                }
+                if (released.isEmpty()) {
+                    RELEASED.remove(pos);
+                }
+            }
+        }
         PlumeState plume = PLUMES.get(pos);
-        if (plume == null || plume.openTick < 0 || !(blockEntity.getLevel() instanceof ClientLevel level)) {
-            return;
+        if (plume != null && plume.openTick >= 0 && !submitOne(blockEntity, level, plume, partialTick)) {
+            PLUMES.remove(pos, plume);
         }
-        if (!Co2PlumeRenderer.available()) {
-            return;
-        }
+    }
+
+    /** Soumet un panache ; faux quand il est entierement dissipe et peut etre oublie. */
+    private static boolean submitOne(Flow2JetBlockEntity blockEntity, ClientLevel level, PlumeState plume, float partialTick) {
         double now = level.getGameTime() + (double) partialTick;
         float age = (float) Math.max(0.0, now - plume.openTick);
         // Interpolation entre ticks : rien de ce que voit le shader ne doit sauter a 20 Hz.
@@ -179,25 +214,24 @@ public final class Flow2JetClientEffects {
             dissipate = Math.min(1f, sinceClose / DISSIPATE_TICKS);
             float openDuration = (float) Math.max(0.0, plume.closeTick - plume.openTick);
             flowClock = openDuration + sinceClose * (1f - 0.8f * dissipate);
-            // On n'oublie le panache qu'une fois sa densite a zero : la coupure seule laisserait une
-            // tete encore visible disparaitre d'un coup.
+            // On n'oublie le panache qu'une fois sa densite a zero.
             if (dissipate >= 1f) {
-                PLUMES.remove(pos);
-                return;
+                return false;
             }
         }
         JetPose jet = jetPose(blockEntity, partialTick);
-        if (!FireworkRenderDistances.isWithinClientFlameRange(jet.nozzle().x, jet.nozzle().y, jet.nozzle().z)) {
-            return;
+        if (FireworkRenderDistances.isWithinClientFlameRange(jet.nozzle().x, jet.nozzle().y, jet.nozzle().z)) {
+            Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, pressure, dissipate, flowClock,
+                    Flow2JetParticleSpawner.exitSpeed(pressure), baseFlow);
         }
-        Co2PlumeRenderer.submit(jet.nozzle(), jet.axis(), length, cutFront, pressure, dissipate, flowClock,
-                Flow2JetParticleSpawner.exitSpeed(pressure), baseFlow);
+        return true;
     }
 
     public static void stop(BlockPos pos) {
         WAS_ACTIVE.remove(pos);
         ACTIVE_TICKS.remove(pos);
         PLUMES.remove(pos);
+        RELEASED.remove(pos);
         Flow2JetDissipation.clear(pos);
         FixtureLoopSfx.release(pos);
     }
