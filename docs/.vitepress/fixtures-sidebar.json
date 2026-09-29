@@ -114,10 +114,6 @@
         "link": "/fixtures/moving_bar"
       },
       {
-        "text": "Dense Moving RGB Bar",
-        "link": "/fixtures/dense_moving_bar"
-      },
-      {
         "text": "Atomic Tilt",
         "link": "/fixtures/atomictilt"
       },
@@ -390,14 +386,6 @@
         "link": "/fixtures/mini_bar"
       },
       {
-        "text": "Dense RGB Bar",
-        "link": "/fixtures/dense_rgb_bar"
-      },
-      {
-        "text": "Dense Vertical RGB Bar",
-        "link": "/fixtures/dense_vertical_bar"
-      },
-      {
         "text": "Truss 3x3 Lights",
         "link": "/fixtures/truss_3lights"
       }
@@ -424,10 +412,6 @@
         "link": "/fixtures/blinder1x1"
       },
       {
-        "text": "Blinder 1x2",
-        "link": "/fixtures/blinder1x2"
-      },
-      {
         "text": "Blinder (warm)",
         "link": "/fixtures/blinder_warm"
       },
@@ -444,7 +428,7 @@
         "link": "/fixtures/white_strobe"
       },
       {
-        "text": "Atomic Strobe",
+        "text": "Atomic Strobe (34 Channels)",
         "link": "/fixtures/atomic_strobe"
       }
     ]

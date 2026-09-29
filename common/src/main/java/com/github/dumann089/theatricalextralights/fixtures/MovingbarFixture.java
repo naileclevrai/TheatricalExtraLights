@@ -1,8 +1,6 @@
 package com.github.dumann089.theatricalextralights.fixtures;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
-import com.github.dumann089.theatricalextralights.blockentities.MovingbarBlockEntity;
-import com.github.dumann089.theatricalextralights.blockentities.PixelBarBlockEntity;
 import dev.imabad.theatrical.api.Fixture;
 import dev.imabad.theatrical.api.HangType;
 import dev.imabad.theatrical.api.dmx.DMXPersonality;
@@ -12,15 +10,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.Collections;
 import java.util.List;
 
 public class MovingbarFixture extends Fixture {
 
-    /** Pan, tilt, puis un dimmer et un RGB par pixel : 2 + 8 x 4 = 34 canaux. */
-    public static final int PIXEL_CHANNEL_COUNT = PixelBarBlockEntity.pixelModeChannelCount(
-            MovingbarBlockEntity.PIXEL_HEADER_CHANNELS, MovingbarBlockEntity.PIXEL_COUNT);
-
-    private static final List<DMXPersonality> PERSONALITIES = List.of(
+    private static final List<DMXPersonality> PERSONALITIES = Collections.singletonList(
             new DMXPersonality(7, "7-Channel Mode")
                     .addSlot(SharedSlots.INTENSITY)
                     .addSlot(SharedSlots.RED)
@@ -28,12 +23,7 @@ public class MovingbarFixture extends Fixture {
                     .addSlot(SharedSlots.BLUE)
                     .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.PAN)
-                    .addSlot(SharedSlots.TILT),
-            PixelBarPersonalities.addPixels(new DMXPersonality(PIXEL_CHANNEL_COUNT,
-                    PixelBarPersonalities.pixelModeName(PIXEL_CHANNEL_COUNT, MovingbarBlockEntity.PIXEL_COUNT, "Pan, Tilt"))
-                    .addSlot(SharedSlots.PAN)
-                    .addSlot(SharedSlots.TILT),
-                    MovingbarBlockEntity.PIXEL_COUNT)
+                    .addSlot(SharedSlots.TILT)
     );
 
     private static final ResourceLocation TILT_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/movingbar/movingbar_tilt");

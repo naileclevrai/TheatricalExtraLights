@@ -39,28 +39,7 @@ Edit the file while the game is closed, or use the settings screen, which writes
 | `laserBeamRadiusCm` | `1.0` | Beam radius at the lens in centimetres, 0.2 to 6. |
 | `laserImpacts` | `true` | Hot spot and line where beams hit blocks. |
 | `laserScanFlicker` | `true` | Bright scan head running along the pattern when the Persistence channel is low. |
-
-## Ether Dream laser projector
-
-Client-side virtual DAC used by the **Ether Dream Laser Projector** block, see [Ether Dream guide](/guide/ether-dream). Also switchable from the *Laser* tab of the Extra Lights settings (*Ether Dream DAC*).
-
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `etherDreamEnabled` | `true` | Start the virtual Ether Dream DAC with the game client. `false` keeps the ports closed; projector blocks stay dark. |
-| `etherDreamBindAddress` | `"0.0.0.0"` | Interface the TCP control socket binds to. Leave on all interfaces unless you need to pin it to one network card. |
-| `etherDreamTcpPort` | `7765` | Ether Dream control port (one controller at a time). |
-| `etherDreamBroadcastPort` | `7654` | UDP port the DAC announces itself on, once per second. |
-| `etherDreamBufferCapacity` | `1800` | Point buffer advertised to the controller. |
-| `etherDreamMaxPointRate` | `100000` | Highest point rate (pps) accepted from the controller. |
-| `etherDreamHwRevision` / `etherDreamSwRevision` | `2` / `2` | Revision numbers reported in the broadcast. |
-| `etherDreamMac` | `"02:00:00:ED:01:00"` | MAC address reported in the broadcast; change it when two clients on the same LAN both run a DAC. |
-| `laserDacMaxRays` | `96` | Maximum visible segments drawn per frame. |
-| `laserDacBlankThreshold` | `256` | Colour level under which a point counts as blanked. |
-| `laserDacPersistenceMs` | `90` | Window over which received points are fused into one picture; raise it if the drawing flickers. |
-| `laserDacHazeRadius` | `0.11` | Halo radius around each ray, in blocks. |
 | `rgbBarBeamLength` | `9.0` | Reach of the RGB bar glow, minimum 1. |
-| `rgbBarBeamIntensity` | `1.0` | Brightness multiplier for the haze sheets of the LED bars (RGB Bar, Vertical RGB Bar, Moving Bar), 0 to 4. Also the **Bar beam intensity** slider of the settings screen. |
-| `co2JetReach` | `1.0` | Reach multiplier for the Flow2Jet CO2 plume, 0.5 to 3. Also the **CO2 jet reach** slider of the settings screen. |
 
 ## Pyro
 

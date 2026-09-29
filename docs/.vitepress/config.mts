@@ -38,7 +38,6 @@ export default defineConfig({
             { text: 'Custom gobos', link: '/guide/custom-gobos' },
             { text: 'Followspot console', link: '/guide/followspot' },
             { text: 'Lasers & emergency stop', link: '/guide/lasers' },
-            { text: 'Ether Dream laser projector (MadMapper)', link: '/guide/ether-dream' },
             { text: 'Pyro & safety arm', link: '/guide/pyro' }
           ]
         },

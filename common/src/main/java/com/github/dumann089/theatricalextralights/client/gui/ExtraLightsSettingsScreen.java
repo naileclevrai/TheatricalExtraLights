@@ -1,7 +1,6 @@
 package com.github.dumann089.theatricalextralights.client.gui;
 
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
-import com.github.dumann089.theatricalextralights.laser.dac.LaserDacRuntime;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
@@ -170,9 +169,6 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(toggle(contentLeft, y, half, "tel.settings.beam2d",
                 TheatricalExtraLightsConfig::shouldRender2DBeam,
                 TheatricalExtraLightsConfig::setRender2DBeam));
-        addRenderableWidget(slider(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.barbeam",
-                0f, 4f, TheatricalExtraLightsConfig.getRgbBarBeamIntensity(), 1, "x",
-                TheatricalExtraLightsConfig::setRgbBarBeamIntensity));
         y += widgetHeight + rowGap;
 
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.brightness",
@@ -201,11 +197,6 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(slider(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.flamebloomstrength",
                 0.1f, 3f, TheatricalExtraLightsConfig.getFlameBloomStrength(), 1, "",
                 TheatricalExtraLightsConfig::setFlameBloomStrength));
-        y += widgetHeight + rowGap;
-
-        addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.co2reach",
-                0.5f, 3f, TheatricalExtraLightsConfig.getCo2JetReach(), 1, "x",
-                TheatricalExtraLightsConfig::setCo2JetReach));
     }
 
     // Onglet Faisceau ------------------------------------------------------
@@ -276,16 +267,6 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(toggle(contentLeft, y, half, "tel.settings.laser.flicker",
                 TheatricalExtraLightsConfig::isLaserScanFlickerEnabled,
                 TheatricalExtraLightsConfig::setLaserScanFlicker));
-        addRenderableWidget(toggle(contentLeft + half + COLUMN_GAP, y, half, "tel.settings.laser.etherdream",
-                TheatricalExtraLightsConfig::isEtherDreamEnabled,
-                enabled -> {
-                    TheatricalExtraLightsConfig.setEtherDreamEnabled(enabled);
-                    if (enabled) {
-                        LaserDacRuntime.start();
-                    } else {
-                        LaserDacRuntime.stop();
-                    }
-                }));
         y += widgetHeight + rowGap;
 
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.haze",
@@ -301,12 +282,6 @@ public class ExtraLightsSettingsScreen extends Screen {
         addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.radius",
                 0.2f, 6f, TheatricalExtraLightsConfig.getLaserBeamRadiusCm(), 1, " cm",
                 TheatricalExtraLightsConfig::setLaserBeamRadiusCm));
-        y += widgetHeight + rowGap;
-
-        addRenderableWidget(slider(contentLeft, y, contentWidth, "tel.settings.laser.detail",
-                16f, (float) TheatricalExtraLightsConfig.MAX_LASER_SEGMENTS,
-                TheatricalExtraLightsConfig.getLaserDacMaxRays(), 0, "",
-                v -> TheatricalExtraLightsConfig.setLaserDacMaxRays(Math.round(v))));
     }
 
     // Widgets --------------------------------------------------------------

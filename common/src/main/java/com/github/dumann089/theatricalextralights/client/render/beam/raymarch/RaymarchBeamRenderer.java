@@ -54,23 +54,12 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         INSTANCE.enqueue(data);
     }
 
-    /**
-     * Faisceau dont la couleur varie le long de sa largeur : {@code colorRampTexture} est une
-     * texture GL d'une ligne, lue par le shader selon la position en U (nappes des barres LED).
-     */
-    public static void submit(BeamRenderData data, int colorRampTexture) {
-        BeamSlot slot = INSTANCE.enqueue(data);
-        if (slot != null) {
-            slot.colorRampTexture = colorRampTexture;
-        }
-    }
-
-    private BeamSlot enqueue(BeamRenderData data) {
+    private void enqueue(BeamRenderData data) {
         if (!TheatricalExtraLightsConfig.isVolumetricBeamEnabled() || data.intensity() <= 0.0f) {
-            return null;
+            return;
         }
         if (!ModShaders.canUseRaymarch()) {
-            return null;
+            return;
         }
 
         if (this.activeBeamCount == 0) {
@@ -80,14 +69,14 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
 
         int maxBeams = Math.min(MAX_BEAMS, Math.max(1, TheatricalExtraLightsConfig.getRaymarchMaxBeamsPerFrame()));
         if (this.activeBeamCount >= maxBeams) {
-            return null;
+            return;
         }
 
         float maxDist = TheatricalExtraLightsConfig.getVolumetricBeamDistance();
         boolean hitBlock = data.scanLen() < maxDist;
         float scanLen = hitBlock ? data.scanLen() + 2.5f : maxDist;
         if (scanLen <= 0.0f) {
-            return null;
+            return;
         }
 
         BeamSlot s = slots[this.activeBeamCount];
@@ -121,9 +110,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         s.localOriginX = (float) data.origin().x;
         s.localOriginY = (float) data.origin().y;
         s.localOriginZ = (float) data.origin().z;
-        s.colorRampTexture = 0;
         this.activeBeamCount++;
-        return s;
     }
 
     @Override
@@ -223,7 +210,6 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("FadeLength").set(s.hitBlock ? 0.0f : fadeLen);
                 shader.safeGetUniform("DustAmount").set(dust);
                 shader.safeGetUniform("GoboRotation").set(s.goboRotation);
-                shader.safeGetUniform("ColorRamp").set(s.colorRampTexture != 0 ? 1.0f : 0.0f);
                 shader.safeGetUniform("WheelTransition").set(s.wheelTransition);
                 FramingShutterRender.applyUniforms(shader, s.shutters);
                 applyAnimationUniforms(shader, s.animation);
@@ -267,11 +253,6 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                     RenderSystem.setShaderTexture(4, OPEN_GOBO);
                     shader.setSampler("Sampler4", RenderSystem.getShaderTexture(4));
                 }
-
-                // Rampe de couleur des barres LED ; sinon la texture du gobo, pour un sampler valide.
-                int rampTex = s.colorRampTexture != 0 ? s.colorRampTexture : goboTex;
-                RenderSystem.setShaderTexture(5, rampTex);
-                shader.setSampler("Sampler5", rampTex);
 
                 shader.apply();
 
@@ -363,15 +344,10 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         double distToVolume = Math.max(0.0, radial - radius);
 
         int beamSteps = qualitySteps;
-        // Une nappe de barre (rampe de couleur) n'est marchee que sur son epaisseur : la marche est
-        // courte quelle que soit la distance, et la reduction de proximite ne faisait que degrader
-        // la haze quand on s'approche.
-        if (s.colorRampTexture == 0) {
-            if (distToVolume < 2.0) {
-                beamSteps = Math.max(4, qualitySteps / 4);
-            } else if (distToVolume < 8.0) {
-                beamSteps = Math.max(4, (qualitySteps * 2) / 5);
-            }
+        if (distToVolume < 2.0) {
+            beamSteps = Math.max(4, qualitySteps / 4);
+        } else if (distToVolume < 8.0) {
+            beamSteps = Math.max(4, (qualitySteps * 2) / 5);
         }
 
         double mx = s.originX + s.dirX * s.scanLen * 0.5 - camPos.x;
@@ -465,8 +441,6 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         public ResourceLocation goboTexture;
         public ResourceLocation nextGoboTexture;
         public float goboRotation;
-        /** Texture GL d'une ligne lue le long de la largeur (barres LED), 0 = aucune. */
-        public int colorRampTexture;
         public float wheelTransition;
         public FramingShutterState.Snapshot shutters;
         public BeamRenderData.Animation animation;
