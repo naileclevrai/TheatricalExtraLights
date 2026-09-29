@@ -59,9 +59,24 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
      * texture GL d'une ligne, lue par le shader selon la position en U (nappes des barres LED).
      */
     public static void submit(BeamRenderData data, int colorRampTexture) {
+        submit(data, colorRampTexture, 0f);
+    }
+
+    /**
+     * @param maxLength longueur voulue du faisceau (reglage de l'appareil), 0 = jusqu'a l'obstacle.
+     *                  Plus courte que l'obstacle, le faisceau s'eteint en fondu a cette longueur au
+     *                  lieu de s'arreter net contre un bloc.
+     */
+    public static void submit(BeamRenderData data, int colorRampTexture, float maxLength) {
         BeamSlot slot = INSTANCE.enqueue(data);
-        if (slot != null) {
-            slot.colorRampTexture = colorRampTexture;
+        if (slot == null) {
+            return;
+        }
+        slot.colorRampTexture = colorRampTexture;
+        if (maxLength > 0f && data.scanLen() > maxLength) {
+            slot.scanLen = maxLength;
+            slot.hitBlock = false;
+            slot.fadeLength = Math.max(0.5f, maxLength * 0.45f);
         }
     }
 
@@ -122,6 +137,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         s.localOriginY = (float) data.origin().y;
         s.localOriginZ = (float) data.origin().z;
         s.colorRampTexture = 0;
+        s.fadeLength = -1f;
         this.activeBeamCount++;
         return s;
     }
@@ -220,7 +236,7 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
                 shader.safeGetUniform("MaxAlpha").set(maxAlpha);
                 shader.safeGetUniform("Brightness").set(brightness);
                 shader.safeGetUniform("Anisotropy").set(anisotropy);
-                shader.safeGetUniform("FadeLength").set(s.hitBlock ? 0.0f : fadeLen);
+                shader.safeGetUniform("FadeLength").set(s.hitBlock ? 0.0f : (s.fadeLength >= 0f ? s.fadeLength : fadeLen));
                 shader.safeGetUniform("DustAmount").set(dust);
                 shader.safeGetUniform("GoboRotation").set(s.goboRotation);
                 shader.safeGetUniform("ColorRamp").set(s.colorRampTexture != 0 ? 1.0f : 0.0f);
@@ -468,6 +484,8 @@ public class RaymarchBeamRenderer extends LazyRenderers.LazyRenderer {
         /** Texture GL d'une ligne lue le long de la largeur (barres LED), 0 = aucune. */
         public int colorRampTexture;
         public float wheelTransition;
+        /** Fondu de fin propre au faisceau, -1 = reglage general. */
+        public float fadeLength = -1f;
         public FramingShutterState.Snapshot shutters;
         public BeamRenderData.Animation animation;
         public boolean hitBlock;

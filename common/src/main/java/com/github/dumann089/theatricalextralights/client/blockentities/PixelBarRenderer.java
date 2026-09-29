@@ -473,7 +473,8 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
             float heightScale = s.vertical() ? 1f : thin;
             submitVolumetricBeam(blockEntity, beamPose, partialTicks, PIXEL_HALF_ANGLE_DEG, PIXEL_HALF_ANGLE_DEG,
                     null, 0, 0f, widthScale, heightScale, beamIndex, normalise(meanColour),
-                    meanLevel / 255f * gain, halfRun);
+                    meanLevel / 255f * gain, halfRun,
+                    (float) Math.min(blockEntity.getDistance(), TheatricalExtraLightsConfig.getRgbBarBeamLength()));
             return;
         }
 
@@ -492,7 +493,8 @@ public abstract class PixelBarRenderer<T extends PixelBarBlockEntity> extends Ex
                 0f, (float) blockEntity.getDistance(), tanHalfAngle, 0xFFFFFF, gain,
                 OPEN_GOBO, OPEN_GOBO, 0f, 0f, blockEntity.getLevel(),
                 1f, thin, halfRun);
-        RaymarchBeamRenderer.submit(data, texture.getId());
+        // Longueur de la nappe : le reglage rgbBarBeamLength, comme les nappes plates, bornee par l'obstacle.
+        RaymarchBeamRenderer.submit(data, texture.getId(), TheatricalExtraLightsConfig.getRgbBarBeamLength());
     }
 
     /**
