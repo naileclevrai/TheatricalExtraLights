@@ -23,6 +23,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
 
@@ -258,6 +260,7 @@ public final class LaserRaymarchRenderer extends LazyRenderers.LazyRenderer {
         }
         dataTexture = TextureUtil.generateTextureId();
         GlStateManager._bindTexture(dataTexture);
+        resetUnpackState();
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_RGBA32F, TEXELS_PER_SEGMENT,
                 LaserFigure.MAX_SEGMENTS, 0, GL11.GL_RGBA, GL11.GL_FLOAT, (FloatBuffer) null);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
@@ -288,8 +291,27 @@ public final class LaserRaymarchRenderer extends LazyRenderers.LazyRenderer {
         }
         upload.flip();
         GlStateManager._bindTexture(dataTexture);
+        resetUnpackState();
         GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, TEXELS_PER_SEGMENT, fig.count,
                 GL11.GL_RGBA, GL11.GL_FLOAT, upload);
+    }
+
+    /**
+     * Remet l'etat de depaquetage des pixels a la valeur par defaut avant un envoi de texture.
+     *
+     * <p>Les envois vanilla (NativeImage : skins, atlas) fixent GL_UNPACK_ROW_LENGTH, SKIP_ROWS,
+     * SKIP_PIXELS et ALIGNMENT a la taille de leur image et ne les remettent jamais. Si un skin de
+     * 64 px vient d'etre charge, notre texture de 8 texels de large serait lue avec un pas de 64 :
+     * le pilote lit huit fois trop loin dans le tampon et plante en natif (EXCEPTION_ACCESS_VIOLATION
+     * dans nvoglv64.dll, vu a la connexion a un serveur). Un eventuel pixel unpack buffer lie par
+     * un autre mod changerait de meme le sens du pointeur.
+     */
+    private static void resetUnpackState() {
+        GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
     }
 
     private void transformPoint(Matrix4f mat, Vec3 p, Vector4f out) {

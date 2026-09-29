@@ -8,7 +8,10 @@
     "defaultRequire": 1
   },
   "client": [
-    "client.shimmer.ReloadShaderManagerMixin"
+    "client.shimmer.ReloadShaderManagerMixin",
+    "client.sfx.SoundBufferAccessor",
+    "client.sfx.SoundBufferLibraryMixin",
+    "client.sfx.SoundBufferMixin"
   ],
   "mixins": [
     "compat.BlockEntityTheatricalDmxExtendedMixin",

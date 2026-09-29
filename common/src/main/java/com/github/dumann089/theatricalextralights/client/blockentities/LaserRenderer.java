@@ -302,7 +302,9 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
         // lisible, comme le ferait l'exposition automatique d'une camera.
         float[] weight = new float[n];
         float share = (float) Math.pow(n, -0.75);
-        float base = (1f - persistence01) * share;
+        // En (1 - p)^1.5 : a persistance moyenne la nappe porte deja le dessin, les faisceaux
+        // de chaque sommet ne doivent pas la rayer de traits.
+        float base = (float) Math.pow(1f - persistence01, 1.5) * share;
         for (int i = 0; i < n; i++) {
             boolean isolated = next[i] < 0 && !hasIn[i];
             if (isolated) {
@@ -350,7 +352,7 @@ public class LaserRenderer extends ExtraLightsRenderer<LaserBlockEntity> {
                     path1, flags);
         }
 
-        fig.striation = (1f - persistence01) * 0.8f;
+        fig.striation = (1f - persistence01) * 0.6f;
         fig.fixturePos = be.getBlockPos();
         fig.origin = originW;
         fig.intensity = intensity01;

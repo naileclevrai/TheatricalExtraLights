@@ -101,6 +101,12 @@ public class TheatricalExtraLightsClientFabric implements ClientModInitializer {
                     DefaultVertexFormat.POSITION_COLOR_TEX,
                     shader -> ModShaders.laserRaymarchShader = shader
             );
+
+            context.register(
+                    new ResourceLocation("theatricalextralights", "co2_plume"),
+                    DefaultVertexFormat.POSITION_COLOR_TEX,
+                    shader -> ModShaders.co2PlumeShader = shader
+            );
         });
     }
 

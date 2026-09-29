@@ -12,8 +12,10 @@ import com.github.dumann089.theatricalextralights.client.entities.FireworkRocket
 import com.github.dumann089.theatricalextralights.client.gobo.GoboWheelManager;
 import com.github.dumann089.theatricalextralights.compat.FireworkLightCompat;
 import com.github.dumann089.theatricalextralights.entities.ModEntities;
+import com.github.dumann089.theatricalextralights.laser.dac.LaserDacRuntime;
 import com.github.dumann089.theatricalextralights.net.ModNetworking;
 import com.github.dumann089.theatricalextralights.net.OpenExtraLightsScreenPacket;
+import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.client.level.entity.EntityRendererRegistry;
@@ -36,7 +38,9 @@ public class TheatricalExtraLightsClient {
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL.get(), BigPanelRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BIG_PANEL2.get(), BigPanel2Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.RGB_BAR.get(), RGBbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.CHCB4.get(), Chcb4Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.LASER.get(), LaserRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.LASER_PROJECTOR.get(), LaserProjectorRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER.get(), BlinderRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER_WARM.get(), BlinderwarmRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.STROBE.get(), StrobeRenderer::new);
@@ -106,6 +110,9 @@ public class TheatricalExtraLightsClient {
         BlockEntityRendererRegistry.register(BlockEntities.HORIZONTALSCROLLER.get(), horizontalscrollerRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.VERTICALSCROLLER.get(), verticalscrollerRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.MOVING_BAR.get(), MovingbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.DENSE_RGB_BAR.get(), DenseRGBbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.DENSE_VERTICAL_BAR.get(), DenseVerticalbarRenderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.DENSE_MOVING_BAR.get(), DenseMovingbarRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.MOVING_MINI_BAR.get(), MovingMiniBarRenderer::new);
 
         BlockEntityRendererRegistry.register(BlockEntities.WATER_JET.get(), WaterJetRenderer::new);
@@ -133,6 +140,7 @@ public class TheatricalExtraLightsClient {
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER2X2.get(), Blinder2x2Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER2X2WARM.get(), Blinder2x2warmRenderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.BLINDER1X1.get(), Blinder1x1Renderer::new);
+        BlockEntityRendererRegistry.register(BlockEntities.BLINDER1X2.get(), Blinder1x2Renderer::new);
         BlockEntityRendererRegistry.register(BlockEntities.MINI_BAR.get(), MiniBarRenderer::new);
         
         BlockEntityRendererRegistry.register(BlockEntities.MOVING_VL2C_BEAMS.get(), MovingVL2CBeamsRenderer::new);
@@ -161,10 +169,17 @@ public class TheatricalExtraLightsClient {
 
         com.github.dumann089.theatricalextralights.client.followspot.FollowspotCameraClient.init();
 
+        // Forge FMLClientSetup runs after CLIENT_STARTED, so waiting on that event
+        // never starts the DAC. Start now, then keep the lifecycle hooks as backup.
+        LaserDacRuntime.start();
+        ClientLifecycleEvent.CLIENT_STARTED.register(client -> LaserDacRuntime.start());
+        ClientLifecycleEvent.CLIENT_STOPPING.register(client -> LaserDacRuntime.stop());
+
         ClientTickEvent.CLIENT_POST.register(client -> {
             if (client.level == null) {
                 com.github.dumann089.theatricalextralights.client.render.beam.shadow.BeamShadowOccluders.clear();
             }
+            LaserDacRuntime.ensureStarted();
             ConfettiBurstClient.tick();
             DetachedPyroSparks.tick();
             if (client.level != null) {
