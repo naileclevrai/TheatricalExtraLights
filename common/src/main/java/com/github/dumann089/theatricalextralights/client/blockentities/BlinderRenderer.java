@@ -119,12 +119,27 @@ public class BlinderRenderer extends ExtraLightsRenderer<BlinderBlockEntity> {
 
                 @Override
                 public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, Camera camera, float partialTick) {
-                    Vec3 offset = Vec3.atLowerCornerOf(blockEntity.getBlockPos()).subtract(camera.getPosition());
-                    BlinderRenderHelper.renderLamps(blockEntity, bufferSource, poseStack, camera, partialTick,
-                            pose -> {
-                                pose.translate(offset.x, offset.y, offset.z);
-                                preparePoseStack(blockEntity, pose, facing, partialTick, isFlipped, blockstate, isHanging);
-                            }, BlinderRenderHelper.Lamps.STANDARD_4X2);
+                    poseStack.pushPose();
+                    Vec3 offset = Vec3.atLowerCornerOf(blockEntity.getBlockPos())
+                            .subtract(camera.getPosition());
+                    poseStack.translate(offset.x, offset.y, offset.z);
+                    preparePoseStack(
+                            blockEntity,
+                            poseStack,
+                            facing,
+                            partialTick,
+                            isFlipped,
+                            blockstate,
+                            isHanging
+                    );
+                    BlinderRenderHelper.renderFace(
+                            blockEntity,
+                            bufferSource,
+                            poseStack,
+                            partialTick,
+                            BlinderRenderHelper.FaceQuad.STANDARD
+                    );
+                    poseStack.popPose();
                 }
                 @Override
                 public Vec3 getPos(float partialTick) {

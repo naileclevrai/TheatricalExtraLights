@@ -108,12 +108,19 @@ public class Blinder1x1Renderer extends ExtraLightsRenderer<Blinder1x1BlockEntit
             LazyRenderers.addLazyRender(new LazyRenderers.LazyRenderer() {
                 @Override
                 public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, Camera camera, float partialTick) {
-                    Vec3 offset = Vec3.atLowerCornerOf(blockEntity.getBlockPos()).subtract(camera.getPosition());
-                    BlinderRenderHelper.renderLamps(blockEntity, bufferSource, poseStack, camera, partialTick,
-                            pose -> {
-                                pose.translate(offset.x, offset.y, offset.z);
-                                preparePoseStack(blockEntity, pose, facing, partialTick, isFlipped, blockstate, isHanging);
-                            }, BlinderRenderHelper.Lamps.COMPACT);
+                    poseStack.pushPose();
+                    Vec3 offset = Vec3.atLowerCornerOf(blockEntity.getBlockPos())
+                            .subtract(camera.getPosition());
+                    poseStack.translate(offset.x, offset.y, offset.z);
+                    preparePoseStack(blockEntity, poseStack, facing, partialTick, isFlipped, blockstate, isHanging);
+                    BlinderRenderHelper.renderFace(
+                            blockEntity,
+                            bufferSource,
+                            poseStack,
+                            partialTick,
+                            BlinderRenderHelper.FaceQuad.COMPACT
+                    );
+                    poseStack.popPose();
                 }
 
                 @Override

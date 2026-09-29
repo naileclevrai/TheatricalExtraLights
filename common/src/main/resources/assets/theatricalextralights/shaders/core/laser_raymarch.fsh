@@ -10,7 +10,7 @@
 //   - faisceaux : gaussienne de la distance rayon/droite, integree le long du rayon,
 //   - nappes    : traversee du plan du secteur balaye, ponderee par 1/(r * angle total),
 //   - impacts   : tache et trait sur la geometrie, lus dans la profondeur de la scene.
-// La figure (jusqu'a 512 segments) arrive dans Sampler2, une texture flottante 8 x N.
+// La figure (jusqu'a 256 segments) arrive dans Sampler2, une texture flottante 8 x N.
 
 uniform sampler2D Sampler1;   // profondeur de la scene
 uniform sampler2D Sampler2;   // donnees de la figure (RGBA32F, 8 texels par segment)
@@ -112,12 +112,9 @@ float motes(vec3 wp, float t) {
     float a = vnoise(wp * 55.0 + drift * 4.0);
     float b = vnoise(wp * 140.0 - drift * 7.0 + 4.2);
     float m = a * b;
-    // A moins de deux metres un grain couvrirait plusieurs pixels : on le fond. Au-dela de
-    // vingt metres un grain fait moins d'un pixel et ne serait plus qu'un crepitement : on
-    // l'eteint aussi.
+    // A moins de deux metres un grain couvrirait plusieurs pixels : on le fond.
     float nearFade = smoothstep(1.5, 5.0, t);
-    float farFade = 1.0 - smoothstep(18.0, 32.0, t);
-    return pow(max(m - 0.42, 0.0) * 3.4, 4.0) * nearFade * farFade;
+    return pow(max(m - 0.34, 0.0) * 3.4, 4.0) * nearFade;
 }
 
 float henyeyGreenstein(float cosTheta, float g) {
@@ -188,12 +185,11 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
     float dist = distance(pr, pb);
 
     float sigmaPhys = BeamRadius + s * Divergence;
-    float sigma = max(sigmaPhys, PixelAngle * t * 1.1);
-    // Halo de diffusion : lobe doux autour du trait, un quart de l'energie. Reference photo :
-    // un trait fin et brulant dans un halo qui s'etend sur plusieurs largeurs de faisceau.
-    // Sa largeur suit le faisceau physique, pas l'empreinte du pixel : de loin il reste de
-    // quelques pixels, sinon les faisceaux qui se croisent a la lentille font une boule.
-    float glowSigma = max(sigmaPhys * 7.0, PixelAngle * t * 3.0);
+    float sigma = max(sigmaPhys, PixelAngle * t * 0.9);
+    // Halo de diffusion : lobe faible autour du trait, 12 % de l'energie. Sa largeur suit
+    // le faisceau physique, pas l'empreinte du pixel : de loin il reste de quelques pixels,
+    // sinon les faisceaux qui se croisent a la lentille s'additionnent en une boule.
+    float glowSigma = max(sigmaPhys * 5.0, PixelAngle * t * 2.2);
     if (dist > 3.2 * glowSigma) {
         return vec3(0.0);
     }
@@ -206,15 +202,15 @@ vec3 beamScatter(vec3 rd, vec3 dirV, float len, vec3 dirW, vec3 color, float wei
     float sinTheta = max(sqrt(max(denom, 0.0)), 0.15);
     float core = exp(-0.5 * dist * dist / (sigma * sigma)) / sigma;
     float glow = exp(-0.5 * dist * dist / (glowSigma * glowSigma)) / glowSigma;
-    float lineIntegral = INV_SQRT_2PI * (0.75 * core + 0.25 * glow) / sinTheta;
+    float lineIntegral = INV_SQRT_2PI * (0.88 * core + 0.12 * glow) / sinTheta;
 
     vec3 wp = OriginW + dirW * s;
-    float haze = hazeAt(wp, 0.75);
+    float haze = hazeAt(wp, 1.0);
     if (haze <= 0.0) {
         return vec3(0.0);
     }
     // Les poussieres ne brillent que dans le coeur du faisceau.
-    haze += motes(wp, t) * 1.6 * exp(-0.5 * dist * dist / (sigma * sigma));
+    haze += motes(wp, t) * 2.5 * exp(-0.5 * dist * dist / (sigma * sigma));
     // Extinction le long du faisceau, puis entre le point et l'oeil : un faisceau lointain
     // est voile par la brume qui le separe de la camera, un faisceau proche reste net.
     float ext = exp(-Extinction * HazeDensity * (s + 0.7 * t));
@@ -262,13 +258,6 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
         return vec3(0.0);
     }
     vec3 qn = q / r;
-    // Jamais derriere la lentille : pour une nappe tres fine (deux directions presque
-    // confondues) les produits vectoriels des bords s'annulent aussi sur l'axe oppose et la
-    // nappe ressortirait en ligne droite a travers le projecteur.
-    vec3 mid = normalize(dir0 + dir1);
-    if (dot(qn, mid) <= 0.0) {
-        return vec3(0.0);
-    }
 
     // Bords du secteur adoucis sur l'empreinte d'un pixel ou l'epaisseur du faisceau.
     float s0 = dot(cross(dir0, qn), n);
@@ -279,6 +268,7 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     float mask = smoothstep(-edgeSoft, edgeSoft, s0) * smoothstep(-edgeSoft, edgeSoft, s1);
     // Halo au-dela des bords : la nappe ne se coupe pas au rasoir, elle s'eteint sur
     // quelques degres comme la diffusion autour d'un trait. Jamais vers l'arriere.
+    vec3 mid = normalize(dir0 + dir1);
     float forward = smoothstep(0.55, 0.85, dot(qn, mid));
     float glowSoft = min(edgeSoft * 10.0, 0.05);
     float glow = smoothstep(-glowSoft, glowSoft * 0.5, s0) * smoothstep(-glowSoft, glowSoft * 0.5, s1);
@@ -304,21 +294,16 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
     float sheetIntegral = SHEET_GAIN / (max(r, 0.8) * TotalSpan * cosPhi);
 
     vec3 dirW = normalize(mix(dirW0, dirW1, frac));
-    float haze = hazeAt(OriginW + dirW * r, 0.4);
+    float haze = hazeAt(OriginW + dirW * r, 0.55);
     if (haze <= 0.0) {
         return vec3(0.0);
     }
     // Striations radiales : positions successives du scanner, visibles quand il balaie
-    // lentement, fondues quand la persistance est a fond. Bruit doux plutot qu'une sinusoide
-    // (des raies nettes se lisaient comme des faisceaux), et eteintes des que leur pas fait
-    // moins de trois pixels a l'ecran : sinon elles crenelent en anneaux de moire.
+    // lentement, fondues quand la persistance est a fond.
     if (Striation > 0.001) {
         float angle = frac * span;
-        float period = 2.0 * PI / 160.0;
-        float periodPx = period * r / max(PixelAngle * t, 1.0e-6);
-        float visible = smoothstep(3.0, 8.0, periodPx);
-        float stri = vnoise(vec3(angle * 160.0 / (2.0 * PI), path0 * 6.0, Time * 0.02));
-        haze *= 1.0 + Striation * 0.3 * visible * (stri - 0.5);
+        float stri = 0.5 + 0.5 * sin(angle * 260.0 + path0 * 40.0);
+        haze *= 1.0 + Striation * 0.55 * (stri - 0.5);
     }
     float ext = exp(-Extinction * HazeDensity * (r + 0.7 * t));
     float phase = phaseFn(rd, -qn);
@@ -328,34 +313,6 @@ vec3 sheetScatter(vec3 rd, vec3 dir0, vec3 dir1, float len0, float len1,
 
     return color * (weight * Intensity * phase * haze * ext * fade * camFade * apertureFade
             * mask * endMask * sheetIntegral * scanMod(path));
-}
-
-// ── Eblouissement a la sortie ────────────────────────────────────────────────
-// Vue de face, la lentille d'un laser est un point aveuglant : la diffusion de la brume
-// juste devant elle et la lumiere parasite de l'optique. Tres directif : rien de dos.
-
-vec3 apertureGlare(vec3 rd, vec3 meanDir, vec3 color, float sceneT) {
-    float t = length(OriginV);
-    if (t < 0.3) {
-        return vec3(0.0);
-    }
-    vec3 toO = OriginV / t;
-    // Derriere un mur : pas d'eblouissement.
-    if (sceneT < t - 0.2) {
-        return vec3(0.0);
-    }
-    float cosA = dot(rd, toO);
-    float ang = acos(clamp(cosA, -1.0, 1.0));
-    // Uniquement quand le laser pointe vers la camera.
-    float facing = smoothstep(0.55, 0.95, dot(-toO, meanDir));
-    if (facing <= 0.0) {
-        return vec3(0.0);
-    }
-    float sigma = max(PixelAngle * 2.5, 0.004);
-    float core = exp(-0.5 * ang * ang / (sigma * sigma));
-    float halo = exp(-ang / (sigma * 8.0)) * 0.08;
-    float haze = 0.4 + 0.6 * hazeAt(OriginW, 0.5);
-    return color * ((core + halo) * facing * haze * Intensity * 3.0);
 }
 
 // ── Impacts sur la geometrie ─────────────────────────────────────────────────
@@ -414,10 +371,8 @@ void main() {
     vec3 rd = normalize(reconstructViewPos(screenUV, 1.0));
 
     vec3 accum = vec3(0.0);
-    vec3 meanDir = vec3(0.0);
-    vec3 meanColor = vec3(0.0);
 
-    for (int i = 0; i < 512; i++) {
+    for (int i = 0; i < 256; i++) {
         if (i >= SegCount) break;
 
         vec4 a = texelFetch(Sampler2, ivec2(0, i), 0);   // dir0 vue, len0
@@ -427,8 +382,6 @@ void main() {
         vec4 c = texelFetch(Sampler2, ivec2(4, i), 0);   // couleur, poids nappe
         vec4 w = texelFetch(Sampler2, ivec2(5, i), 0);   // poids faisceau 0/1, chemin 0/1
         int flags = int(f.w + 0.5);
-        meanDir += a.xyz;
-        meanColor += c.rgb;
 
         if ((flags & FLAG_BEAM0) != 0) {
             accum += beamScatter(rd, a.xyz, a.w, f.xyz, c.rgb, w.x, w.z, sceneT,
@@ -459,10 +412,6 @@ void main() {
                 accum += impactLine(scenePos, sceneT, h0, h1, a.w, b.w, c.rgb, c.w);
             }
         }
-    }
-
-    if (SegCount > 0 && dot(meanDir, meanDir) > 1.0e-6) {
-        accum += apertureGlare(rd, normalize(meanDir), meanColor / float(SegCount), sceneT);
     }
 
     accum *= Brightness;

@@ -3,9 +3,10 @@ package com.github.dumann089.theatricalextralights.blockentities;
 import com.github.dumann089.theatricalextralights.config.TheatricalExtraLightsConfig;
 import com.github.dumann089.theatricalextralights.fixtures.Fixtures;
 import com.github.dumann089.theatricalextralights.net.LedFacadeFramesPacket;
-import com.github.dumann089.theatricalextralights.util.TheatricalNetworkAccess;
 import dev.imabad.theatrical.api.Fixture;
 import dev.imabad.theatrical.blockentities.light.BaseLightBlockEntity;
+import dev.imabad.theatrical.dmx.DMXNetwork;
+import dev.imabad.theatrical.dmx.DMXNetworkData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -263,6 +264,14 @@ public class LedFacadeBlockEntity extends ExtraLightsLightBlockEntity {
 
     // ─── Sous-consommateurs (serveur) ──────────────────────────────────────────
 
+    private DMXNetwork network() {
+        if (level == null || level.getServer() == null) {
+            return null;
+        }
+        DMXNetworkData data = DMXNetworkData.getInstance(level.getServer().overworld());
+        return data == null ? null : data.getNetwork(getNetworkId());
+    }
+
     private void rebuildSubConsumers() {
         if (level == null || level.isClientSide || level.getServer() == null) {
             return;
@@ -270,17 +279,22 @@ public class LedFacadeBlockEntity extends ExtraLightsLightBlockEntity {
         removeAllSubConsumers();
         int span = Math.min(universesSpanned(), maxUniverses());
         ensureFrameCapacity(span);
+        DMXNetwork net = network();
+        if (net == null) {
+            return;
+        }
         for (int i = 1; i < span; i++) {
             LedFacadeUniverseConsumer sub = new LedFacadeUniverseConsumer(this, i);
             subConsumers.add(sub);
-            TheatricalNetworkAccess.addConsumer(level, getNetworkId(), getBlockPos(), sub);
+            net.addConsumer(getBlockPos(), sub);
         }
     }
 
     private void removeAllSubConsumers() {
-        if (level != null && !subConsumers.isEmpty()) {
+        DMXNetwork net = network();
+        if (net != null) {
             for (LedFacadeUniverseConsumer sub : subConsumers) {
-                TheatricalNetworkAccess.removeConsumer(level, getNetworkId(), getBlockPos(), sub);
+                net.removeConsumer(sub, getBlockPos());
             }
         }
         subConsumers.clear();

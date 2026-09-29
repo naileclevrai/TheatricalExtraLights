@@ -1,6 +1,7 @@
 package com.github.dumann089.theatricalextralights.fixtures;
 
 import com.github.dumann089.theatricalextralights.TheatricalExtraLights;
+import dev.imabad.theatrical.Theatrical;
 import dev.imabad.theatrical.api.Fixture;
 import dev.imabad.theatrical.api.HangType;
 import dev.imabad.theatrical.api.dmx.DMXPersonality;
@@ -12,10 +13,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
 
-/**
- * Tete strobe sur lyre a tilt, sans pan. Les deux premiers modes sont les historiques ; les deux
- * suivants reprennent le moteur Atomic (intensite, duree de flash, cadence, effets).
- */
+
 public class AtomictiltFixture extends Fixture {
 
     private static final List<DMXPersonality> PERSONALITIES = List.of(
@@ -33,23 +31,6 @@ public class AtomictiltFixture extends Fixture {
                     .addSlot(SharedSlots.BLUE)
                     .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.FOCUS)
-                    .addSlot(SharedSlots.TILT),
-            new DMXPersonality(6, "6-Channel Atomic + Focus + Tilt")
-                    .addSlot(AtomicSlots.INTENSITY)
-                    .addSlot(AtomicSlots.DURATION)
-                    .addSlot(AtomicSlots.RATE)
-                    .addSlot(AtomicSlots.EFFECTS)
-                    .addSlot(SharedSlots.FOCUS)
-                    .addSlot(SharedSlots.TILT),
-            new DMXPersonality(9, "9-Channel Atomic RGB + Focus + Tilt")
-                    .addSlot(AtomicSlots.INTENSITY)
-                    .addSlot(AtomicSlots.DURATION)
-                    .addSlot(AtomicSlots.RATE)
-                    .addSlot(AtomicSlots.EFFECTS)
-                    .addSlot(SharedSlots.RED)
-                    .addSlot(SharedSlots.GREEN)
-                    .addSlot(SharedSlots.BLUE)
-                    .addSlot(SharedSlots.FOCUS)
                     .addSlot(SharedSlots.TILT)
     );
 
@@ -57,7 +38,10 @@ public class AtomictiltFixture extends Fixture {
     private static final ResourceLocation STATIC_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/atomictilt/atomictilt_base");
     private static final ResourceLocation PAN_MODEL = new ResourceLocation(TheatricalExtraLights.MOD_ID, "block/atomictilt/atomictilt_base");
 
+
     private final float[] tiltRotation = new float[]{0.503F, 0.567F, .462F};
+//    private final float[] beamStartPosition = new float[]{0.5F, 0.875F, 0.4375F};
+
 
     @Override
     public ResourceLocation getTiltModel() {
@@ -81,8 +65,9 @@ public class AtomictiltFixture extends Fixture {
 
     @Override
     public float[] getPanRotationPosition() {
-        return new float[]{0f, 0f, 0f};
+    return new float[]{0f, 0f, 0f};
     }
+
 
     @Override
     public float[] getBeamStartPosition() {
@@ -111,7 +96,7 @@ public class AtomictiltFixture extends Fixture {
 
     @Override
     public float[] getTransforms(BlockState fixtureBlockState, BlockState supportBlockState) {
-        if (fixtureBlockState.getValue(BaseLightBlock.HANG_DIRECTION) == Direction.UP) {
+        if(fixtureBlockState.getValue(BaseLightBlock.HANG_DIRECTION) == Direction.UP){
             return new float[]{0, .5f, 0};
         }
         return new float[]{0, -0.35F, 0};
